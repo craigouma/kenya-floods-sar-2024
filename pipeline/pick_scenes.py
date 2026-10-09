@@ -1,8 +1,10 @@
 """Choose the post-event and pre-event Sentinel-1 pass for every AOI.
 
-A pass is every GRD slice of one datatake that touches the AOI; together they
-must cover it, since an AOI can straddle two consecutive slices. Pass ids are
-the slice ids joined with ';'.
+A pass is every GRD slice of one datatake that touches the AOI, since an AOI
+can straddle two consecutive slices. Pass ids are the slice ids joined with
+';'. A pass must image at least MIN_COVER of the AOI; corridor tiles that
+straddle two tracks keep the larger share, and unimaged pixels drop out of the
+evaluation as no-data.
 
 Post-event: the pass closest in time to the UNOSAT reference image. Passes
 more than MAX_DAY_GAP days away are kept but flagged, and leave the AOI out of
@@ -26,11 +28,13 @@ from reference import load_aois
 
 SCENES = AOI / "scenes.csv"
 SEARCH_DAYS = 30
+MIN_COVER = 0.5
 
 
 @dataclass
 class Pass:
     items: list
+    cover: float
 
     @property
     def id(self) -> str:
@@ -56,7 +60,9 @@ def covering(cat, geom, start: str, end: str, **query) -> list[Pass]:
     for i in items:
         if {"vv", "vh"} <= set(i.assets):
             groups.setdefault((i.datetime.date(), i.properties["sat:relative_orbit"]), []).append(i)
-    return [Pass(g) for g in groups.values() if unary_union([shape(i.geometry) for i in g]).contains(geom)]
+    passes = [Pass(g, unary_union([shape(i.geometry) for i in g]).intersection(geom).area / geom.area)
+              for g in groups.values()]
+    return [p for p in passes if p.cover >= MIN_COVER]
 
 
 def pick(cat, geom, ref_date: pd.Timestamp) -> dict:
@@ -65,11 +71,11 @@ def pick(cat, geom, ref_date: pd.Timestamp) -> dict:
     if not passes:
         raise ValueError(f"no Sentinel-1 pass covers the AOI within {SEARCH_DAYS} days")
     gap = lambda p: (p.date - ref_date).days
-    post = min(passes, key=lambda p: (abs(gap(p)), gap(p)))
+    post = min(passes, key=lambda p: (abs(gap(p)), -p.cover, gap(p)))
     pre_passes = covering(cat, geom, PRE_EVENT_START, PRE_EVENT_END, **{"sat:relative_orbit": {"eq": post.orbit}})
     if not pre_passes:
         raise ValueError(f"no dry-season pass on relative orbit {post.orbit}")
-    pre = max(pre_passes, key=lambda p: p.date)
+    pre = max(pre_passes, key=lambda p: (p.cover, p.date))
     return {
         "post_id": post.id,
         "post_date": post.date.date().isoformat(),
@@ -77,6 +83,8 @@ def pick(cat, geom, ref_date: pd.Timestamp) -> dict:
         "headline": abs(gap(post)) <= MAX_DAY_GAP,
         "pre_id": pre.id,
         "pre_date": pre.date.date().isoformat(),
+        "post_cover": round(post.cover, 3),
+        "pre_cover": round(pre.cover, 3),
         "relative_orbit": post.orbit,
         "orbit_state": post.items[0].properties["sat:orbit_state"],
         "n_passes_within_gap": sum(abs(gap(p)) <= MAX_DAY_GAP for p in passes),
