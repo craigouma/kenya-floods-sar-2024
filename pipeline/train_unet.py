@@ -71,9 +71,13 @@ def load(pairs: list[tuple[Path, ...]], label_path: callable) -> tuple[np.ndarra
     return np.stack(xs), np.stack(ys)
 
 
-def split(root: Path, name: str) -> list[str]:
+def split(root: Path, name: str, paired_with: Path | None = None) -> list[str]:
+    """Chip ids of a hand-labelled split, optionally only those with a pre-event chip."""
     with open(root / "splits" / "flood_handlabeled" / f"flood_{name}_data.csv") as f:
-        return [row[0].removesuffix("_S1Hand.tif") for row in csv.reader(f)]
+        chips = [row[0].removesuffix("_S1Hand.tif") for row in csv.reader(f)]
+    if paired_with:
+        chips = [c for c in chips if (paired_with / f"{c}_S1PreHand.tif").exists()]
+    return chips
 
 
 def hand_inputs(root: Path, chip: str, pre_dir: Path | None) -> tuple[Path, ...]:
@@ -150,14 +154,18 @@ def train(name, x, y, xv, yv, args, device) -> dict:
     return {"history": history, "best_val_mean_chip_iou": best, "model": model}
 
 
-def evaluate(model, root, pre_dir, device) -> dict:
+def evaluate(model, root, pre_dir, paired_with, device) -> dict:
+    """Scores on the full test and Bolivia splits and on their paired subsets
+    (chips that also have a pre-event image), where all three runs compare."""
+    subsets = {"_paired": paired_with} if pre_dir else {"": None, "_paired": paired_with}
     out = {}
     for name in ("test", "bolivia"):
-        chips = split(root, name)
-        x, y = load([hand_inputs(root, c, pre_dir) for c in chips], hand_label(root))
-        perm = np.stack([read(root / "HandLabeled" / "JRCWaterHand" / f"{c}_JRCWaterHand.tif")[0] == 1 for c in chips])
-        pred = predict(model, x, device)
-        out[name] = {"all_water": iou_scores(pred, y), "flood_water": iou_scores(pred, y, ~perm)}
+        for suffix, pair in subsets.items():
+            chips = split(root, name, pair)
+            x, y = load([hand_inputs(root, c, pre_dir) for c in chips], hand_label(root))
+            perm = np.stack([read(root / "HandLabeled" / "JRCWaterHand" / f"{c}_JRCWaterHand.tif")[0] == 1 for c in chips])
+            pred = predict(model, x, device)
+            out[name + suffix] = {"all_water": iou_scores(pred, y), "flood_water": iou_scores(pred, y, ~perm)}
     return out
 
 
@@ -179,21 +187,24 @@ def main() -> None:
     results = {}
     for run in args.runs:
         pre_dir = args.pre_dir if run.startswith("pre") else None
-        x, y = load([hand_inputs(root, c, pre_dir) for c in split(root, "train")], hand_label(root))
+        # The pre-event run and its post-only control use only chips that have
+        # a pre-event image, so the two differ in input channels alone.
+        pairing = args.pre_dir if run in ("pre_hand", "post_hand") else None
+        x, y = load([hand_inputs(root, c, pre_dir) for c in split(root, "train", pairing)], hand_label(root))
         if run.endswith("hand_weak"):
             weak = [p for p in sorted((root / "WeaklyLabeled" / "S1Weak").glob("*_S1Weak.tif"))
                     if not p.name.startswith("Bolivia_")]
             xw, yw = load([(p,) for p in weak],
                           lambda p: root / "WeaklyLabeled" / "S2IndexLabelWeak" / p.name.replace("S1Weak", "S2IndexLabelWeak"))
             x, y = np.concatenate([x, xw]), np.concatenate([y, yw])
-        xv, yv = load([hand_inputs(root, c, pre_dir) for c in split(root, "valid")], hand_label(root))
+        xv, yv = load([hand_inputs(root, c, pre_dir) for c in split(root, "valid", pairing)], hand_label(root))
         fit = train(run, x, y, xv, yv, args, device)
         results[run] = {"n_train_chips": int(len(x)), "in_channels": int(x.shape[1]), "base": args.base,
                         "epochs": args.epochs, "best_val_mean_chip_iou": fit["best_val_mean_chip_iou"],
-                        **evaluate(fit["model"], root, pre_dir, device)}
+                        **evaluate(fit["model"], root, pre_dir, args.pre_dir, device)}
         (args.out / f"{run}_history.json").write_text(json.dumps(fit["history"], indent=1))
         (args.out / "sen1floods11_results.json").write_text(json.dumps(results, indent=1))
-        print(run, json.dumps({k: v for k, v in results[run].items() if k in ("test", "bolivia")}), flush=True)
+        print(run, json.dumps({k: v for k, v in results[run].items() if k.startswith(("test", "bolivia"))}), flush=True)
 
 
 if __name__ == "__main__":
