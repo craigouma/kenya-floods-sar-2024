@@ -27,18 +27,22 @@ def item(item_id: str):
     return cat.get_collection("sentinel-1-grd").get_item(item_id)
 
 
-def stack(aoi: str) -> dict[str, np.ndarray]:
-    path = STACKS / f"{aoi}.npz"
+def stack(aoi: str, post_id: str | None = None, pre_id: str | None = None) -> dict[str, np.ndarray]:
+    """Input stack for an AOI, with the scenes from scenes.csv unless overridden
+    (the day-gap sensitivity analysis swaps in other passes)."""
+    scene = pd.read_csv(SCENES).set_index("aoi").loc[aoi]
+    ids = {"post": post_id or scene["post_id"], "pre": pre_id or scene["pre_id"]}
+    tag = aoi if post_id is None and pre_id is None else f"{aoi}__{ids['post'][17:25]}__{ids['pre'][17:25]}"
+    path = STACKS / f"{tag}.npz"
     if path.exists():
         return dict(np.load(path))
     grid = grid_of(aoi)
-    scene = pd.read_csv(SCENES).set_index("aoi").loc[aoi]
     anc = ancillary.build(aoi, grid)
     with rasterio.open(REFERENCE / f"{aoi}_flood.tif") as src:
         ref = src.read(1)
     out = {"reference": ref, **anc}
     for when in ("post", "pre"):
-        s0 = s1_grd.sigma0(item(scene[f"{when}_id"]), grid, anc["ellipsoid_height"])
+        s0 = s1_grd.sigma0(item(ids[when]), grid, anc["ellipsoid_height"])
         out[f"{when}_vv"], out[f"{when}_vh"] = s0["vv"], s0["vh"]
     np.savez_compressed(path, **out)
     return out
