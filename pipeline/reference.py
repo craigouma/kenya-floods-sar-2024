@@ -12,12 +12,14 @@ image, clipped to the Garissa analysis extent.
 """
 
 from dataclasses import dataclass
+from functools import lru_cache
 
 import geopandas as gpd
 import numpy as np
 import pandas as pd
 import rasterio
 from rasterio.features import rasterize
+from shapely import wkt
 
 from config import AOI, PIXEL_SIZE, REFERENCE
 from fetch_reference import ARCHIVE
@@ -37,6 +39,7 @@ class Spec:
     cloud: str | None
     structures: str | None
     hdx: tuple[str, ...]
+    clip: str | None = None
 
 
 SPECS = [
@@ -62,24 +65,52 @@ SPECS = [
           "flood-impact-analysis-in-nairobi-and-machakos-county-kenya-as-of-1-may-2024",
           "flood-impact-analysis-in-kiambu-county-kenya-as-of-1-may-2024")),
 ]
-SPEC = {s.aoi: s for s in SPECS}
+TANA_TILES = AOI / "tana_tiles.gpkg"
+GARISSA_S2 = SPECS[0]
+
+
+def tana_specs() -> list[Spec]:
+    """Tana and Galana corridor tiles built by tana_corridor.py, if present.
+
+    Same Sentinel-2 product of 29 April as garissa_s2, evaluated along the
+    river corridor outside the Garissa extent.
+    """
+    if not TANA_TILES.exists():
+        return []
+    tiles = gpd.read_file(TANA_TILES)
+    return [Spec(t.aoi, "riverine", "Sentinel-2", "2024-04-29",
+                 "S2_20240429_AnalysisExtent_AlongTanaRiver_GalanaRiver", GARISSA_S2.flood, GARISSA_S2.cloud, None,
+                 (), t.geometry.wkt) for t in tiles.itertuples()]
+
+
+SPEC = {s.aoi: s for s in SPECS + tana_specs()}
 
 
 def layer(name: str) -> gpd.GeoDataFrame:
     return gpd.read_file(f"zip://{ARCHIVE}!FL20240426KEN_SHP/{name}.shp")
 
 
+@lru_cache(maxsize=16)
+def layer_utm(name: str) -> gpd.GeoDataFrame:
+    return layer(name).to_crs(UTM)
+
+
+def extent(spec: Spec):
+    geom = layer_utm(spec.extent).union_all()
+    return geom.intersection(wkt.loads(spec.clip)) if spec.clip else geom
+
+
 def domain(spec: Spec):
     """Analysed extent minus areas UNOSAT marked as obscured by cloud."""
-    extent = layer(spec.extent).to_crs(UTM).union_all()
+    geom = extent(spec)
     if spec.cloud:
-        extent = extent.difference(layer(spec.cloud).to_crs(UTM).clip(extent.bounds).union_all())
-    return extent
+        geom = geom.difference(layer_utm(spec.cloud).clip(geom.bounds).union_all())
+    return geom
 
 
 def load_aois() -> gpd.GeoDataFrame:
     rows = [{"aoi": s.aoi, "group": s.group, "sensor": s.sensor, "reference_date": s.reference_date,
-             "geometry": layer(s.extent).to_crs(UTM).union_all()} for s in SPECS]
+             "geometry": extent(s)} for s in SPEC.values()]
     return gpd.GeoDataFrame(rows, crs=UTM)
 
 
@@ -98,10 +129,10 @@ def rasterise(spec: Spec) -> None:
     pixel counts as flooded when its centre falls inside a flood polygon.
     """
     dom = domain(spec)
-    transform, width, height = grid_for(layer(spec.extent).to_crs(UTM).union_all())
+    transform, width, height = grid_for(extent(spec))
     shape = (height, width)
     inside = rasterize([dom], out_shape=shape, transform=transform, fill=0, default_value=1, dtype="uint8")
-    flood_geoms = layer(spec.flood).to_crs(UTM).clip(dom.bounds).explode(index_parts=False).geometry
+    flood_geoms = layer_utm(spec.flood).clip(dom.bounds).explode(index_parts=False).geometry
     flood = rasterize(((g, 1) for g in flood_geoms if not g.is_empty), out_shape=shape,
                       transform=transform, fill=0, dtype="uint8")
     out = np.where(inside == 1, flood, NODATA).astype("uint8")
@@ -113,21 +144,22 @@ def rasterise(spec: Spec) -> None:
 
 def summary() -> pd.DataFrame:
     rows = []
-    for s in SPECS:
+    for s in SPEC.values():
         with rasterio.open(REFERENCE / f"{s.aoi}_flood.tif") as src:
             a = src.read(1)
         px_km2 = PIXEL_SIZE**2 / 1e6
         rows.append({"aoi": s.aoi, "group": s.group, "sensor": s.sensor, "reference_date": s.reference_date,
                      "domain_km2": round((a != NODATA).sum() * px_km2, 2),
                      "flood_km2": round((a == 1).sum() * px_km2, 2),
-                     "excluded_cloud_km2": round(layer(s.extent).to_crs(UTM).area.sum() / 1e6 - (a != NODATA).sum() * px_km2, 2),
+                     "excluded_cloud_km2": round(extent(s).area / 1e6 - (a != NODATA).sum() * px_km2, 2),
                      "hdx_products": ";".join(s.hdx)})
     return pd.DataFrame(rows)
 
 
 def main() -> None:
-    for s in SPECS:
-        rasterise(s)
+    for s in SPEC.values():
+        if not (REFERENCE / f"{s.aoi}_flood.tif").exists():
+            rasterise(s)
     load_aois().to_file(AOI / "aois.gpkg", driver="GPKG")
     df = summary()
     df.to_csv(REFERENCE / "reference_summary.csv", index=False)
