@@ -48,8 +48,15 @@ def _floats(node: ET.Element, tag: str) -> np.ndarray:
     return np.array(node.find(tag).text.split(), dtype=float)
 
 
+def _product_annotation(item: pystac.Item, pol: str) -> str:
+    # On recent IPF versions the catalogue's schema-product asset points at the
+    # RFI annotation; the product annotation sits beside the measurement.
+    href = item.assets[pol].href.split("?")[0]
+    return href.replace("/measurement/", "/annotation/").replace(".tiff", ".xml")
+
+
 def geolocation_grid(item: pystac.Item, pol: str) -> dict[str, np.ndarray]:
-    root = _xml(item.assets[f"schema-product-{pol}"].href)
+    root = _xml(_product_annotation(item, pol))
     pts = root.findall(".//geolocationGridPoint")
     keys = ("line", "pixel", "latitude", "longitude", "height", "incidenceAngle")
     grid = {k: np.array([float(p.find(k).text) for p in pts]) for k in keys}
