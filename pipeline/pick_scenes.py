@@ -1,18 +1,25 @@
-"""Choose the post-event and pre-event Sentinel-1 scene for every AOI.
+"""Choose the post-event and pre-event Sentinel-1 pass for every AOI.
 
-Post-event: the GRD acquisition closest in time to the UNOSAT reference image,
-within MAX_DAY_GAP days, that covers the whole AOI. AOIs without one keep their
-nearest pass but are flagged for the sensitivity table only.
+A pass is every GRD slice of one datatake that touches the AOI; together they
+must cover it, since an AOI can straddle two consecutive slices. Pass ids are
+the slice ids joined with ';'.
 
-Pre-event: the latest January to February 2024 acquisition from the same
-relative orbit, so that look geometry matches and the late-2023 short-rains
-flooding has had the longest time to recede.
+Post-event: the pass closest in time to the UNOSAT reference image. Passes
+more than MAX_DAY_GAP days away are kept but flagged, and leave the AOI out of
+the headline numbers.
+
+Pre-event: the latest January to February 2024 pass from the same relative
+orbit, so that look geometry matches and the late-2023 short-rains flooding
+has had the longest time to recede.
 """
+
+from dataclasses import dataclass
 
 import pandas as pd
 import planetary_computer
 import pystac_client
 from shapely.geometry import shape
+from shapely.ops import unary_union
 
 from config import AOI, MAX_DAY_GAP, PRE_EVENT_END, PRE_EVENT_START, STAC_API
 from reference import load_aois
@@ -21,38 +28,58 @@ SCENES = AOI / "scenes.csv"
 SEARCH_DAYS = 30
 
 
+@dataclass
+class Pass:
+    items: list
+
+    @property
+    def id(self) -> str:
+        return ";".join(sorted(i.id for i in self.items))
+
+    @property
+    def date(self) -> pd.Timestamp:
+        return pd.Timestamp(self.items[0].datetime).tz_localize(None).normalize()
+
+    @property
+    def orbit(self) -> int:
+        return self.items[0].properties["sat:relative_orbit"]
+
+
 def catalog() -> pystac_client.Client:
     return pystac_client.Client.open(STAC_API, modifier=planetary_computer.sign_inplace)
 
 
-def covering(cat, geom, start: str, end: str, **query) -> list:
+def covering(cat, geom, start: str, end: str, **query) -> list[Pass]:
     items = cat.search(collections=["sentinel-1-grd"], intersects=geom, datetime=f"{start}/{end}",
                        query={"sar:instrument_mode": {"eq": "IW"}, **query}).item_collection()
-    return [i for i in items if shape(i.geometry).contains(geom) and {"vv", "vh"} <= set(i.assets)]
+    groups = {}
+    for i in items:
+        if {"vv", "vh"} <= set(i.assets):
+            groups.setdefault((i.datetime.date(), i.properties["sat:relative_orbit"]), []).append(i)
+    return [Pass(g) for g in groups.values() if unary_union([shape(i.geometry) for i in g]).contains(geom)]
 
 
 def pick(cat, geom, ref_date: pd.Timestamp) -> dict:
     window = (ref_date - pd.Timedelta(days=SEARCH_DAYS), ref_date + pd.Timedelta(days=SEARCH_DAYS))
-    items = covering(cat, geom, window[0].strftime("%Y-%m-%d"), window[1].strftime("%Y-%m-%d"))
-    if not items:
-        raise ValueError(f"no Sentinel-1 GRD scene covers the AOI within {SEARCH_DAYS} days")
-    gap = lambda i: (pd.Timestamp(i.datetime).tz_localize(None).normalize() - ref_date).days
-    post = min(items, key=lambda i: (abs(gap(i)), gap(i)))
-    orbit = post.properties["sat:relative_orbit"]
-    pre_items = covering(cat, geom, PRE_EVENT_START, PRE_EVENT_END, **{"sat:relative_orbit": {"eq": orbit}})
-    if not pre_items:
-        raise ValueError(f"no dry-season scene on relative orbit {orbit}")
-    pre = max(pre_items, key=lambda i: i.datetime)
+    passes = covering(cat, geom, f"{window[0]:%Y-%m-%d}", f"{window[1]:%Y-%m-%d}")
+    if not passes:
+        raise ValueError(f"no Sentinel-1 pass covers the AOI within {SEARCH_DAYS} days")
+    gap = lambda p: (p.date - ref_date).days
+    post = min(passes, key=lambda p: (abs(gap(p)), gap(p)))
+    pre_passes = covering(cat, geom, PRE_EVENT_START, PRE_EVENT_END, **{"sat:relative_orbit": {"eq": post.orbit}})
+    if not pre_passes:
+        raise ValueError(f"no dry-season pass on relative orbit {post.orbit}")
+    pre = max(pre_passes, key=lambda p: p.date)
     return {
         "post_id": post.id,
-        "post_date": post.datetime.date().isoformat(),
+        "post_date": post.date.date().isoformat(),
         "day_gap": gap(post),
         "headline": abs(gap(post)) <= MAX_DAY_GAP,
         "pre_id": pre.id,
-        "pre_date": pre.datetime.date().isoformat(),
-        "relative_orbit": orbit,
-        "orbit_state": post.properties["sat:orbit_state"],
-        "n_candidates_within_gap": sum(abs(gap(i)) <= MAX_DAY_GAP for i in items),
+        "pre_date": pre.date.date().isoformat(),
+        "relative_orbit": post.orbit,
+        "orbit_state": post.items[0].properties["sat:orbit_state"],
+        "n_passes_within_gap": sum(abs(gap(p)) <= MAX_DAY_GAP for p in passes),
     }
 
 
@@ -63,7 +90,7 @@ def main() -> None:
             for a in aois.itertuples()]
     df = pd.DataFrame(rows)
     df.to_csv(SCENES, index=False)
-    print(df.to_string(index=False))
+    print(df.drop(columns=["post_id", "pre_id"]).to_string(index=False))
 
 
 if __name__ == "__main__":

@@ -22,9 +22,10 @@ def grid_of(aoi: str) -> s1_grd.Grid:
         return s1_grd.Grid(src.crs.to_string(), src.transform, src.width, src.height)
 
 
-def item(item_id: str):
+def items(pass_id: str) -> list:
     cat = pystac_client.Client.open(STAC_API, modifier=planetary_computer.sign_inplace)
-    return cat.get_collection("sentinel-1-grd").get_item(item_id)
+    collection = cat.get_collection("sentinel-1-grd")
+    return [collection.get_item(i) for i in pass_id.split(";")]
 
 
 def stack(aoi: str, post_id: str | None = None, pre_id: str | None = None) -> dict[str, np.ndarray]:
@@ -42,7 +43,7 @@ def stack(aoi: str, post_id: str | None = None, pre_id: str | None = None) -> di
         ref = src.read(1)
     out = {"reference": ref, **anc}
     for when in ("post", "pre"):
-        s0 = s1_grd.sigma0(item(ids[when]), grid, anc["ellipsoid_height"])
+        s0 = s1_grd.sigma0_pass(items(ids[when]), grid, anc["ellipsoid_height"])
         out[f"{when}_vv"], out[f"{when}_vh"] = s0["vv"], s0["vh"]
     np.savez_compressed(path, **out)
     return out
