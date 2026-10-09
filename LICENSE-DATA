@@ -1,0 +1,27 @@
+Data licence
+
+Flood extent rasters, tables, and figures produced by this repository (everything
+under outputs/ and paper/, and the derived files under data/aoi/) are released
+under the Creative Commons Attribution 4.0 International licence (CC BY 4.0).
+
+  https://creativecommons.org/licenses/by/4.0/
+
+Attribution: Craig Carlos Ouma (2026), Sentinel-1 flood mapping of the 2024 Kenya
+long-rains floods, https://github.com/craigouma/kenya-floods-sar-2024
+
+Third-party inputs keep their own licences:
+
+- UNOSAT rapid mapping products for activation FL20240426KEN (data/reference/),
+  obtained from the Humanitarian Data Exchange, are licensed CC BY-SA by UNITAR's
+  Satellite Centre (UNOSAT). They are redistributed here unmodified, and their
+  rasterised versions are derivatives that remain under CC BY-SA.
+- Copernicus Sentinel-1 and Sentinel-2 data are provided under the Copernicus
+  free, full and open data policy. Contains modified Copernicus Sentinel data 2024.
+- Sen1Floods11 (Bonafilia et al., 2020) is distributed by Cloud to Street under its
+  own licence and is not redistributed here.
+- JRC Global Surface Water (Pekel et al., 2016), ESA WorldCover 2021, Copernicus
+  DEM GLO-30, Google Open Buildings v3, and the HDX Kenya COD-AB boundaries are
+  used under their respective open licences; the ancillary subsets under
+  data/ancillary/ retain those licences.
+
+None of the organisations above produced, reviewed, or endorse this work.
