@@ -85,7 +85,7 @@ def run(method: str) -> pd.DataFrame:
         for p in covering(cat, geom, START, END):
             if p.orbit not in pres:
                 cands = covering(cat, geom, PRE_EVENT_START, PRE_EVENT_END, **{"sat:relative_orbit": {"eq": p.orbit}})
-                pres[p.orbit] = max(cands, key=lambda q: (q.cover, q.date)) if cands else None
+                pres[p.orbit] = max(cands, key=lambda q: (round(q.cover, 2), q.date)) if cands else None
             if pres[p.orbit] is None:
                 continue
             pre = pre_event(aoi, p.orbit, pres[p.orbit].id, grid, anc["ellipsoid_height"])

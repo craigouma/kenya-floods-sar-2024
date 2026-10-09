@@ -75,7 +75,7 @@ def pick(cat, geom, ref_date: pd.Timestamp) -> dict:
     pre_passes = covering(cat, geom, PRE_EVENT_START, PRE_EVENT_END, **{"sat:relative_orbit": {"eq": post.orbit}})
     if not pre_passes:
         raise ValueError(f"no dry-season pass on relative orbit {post.orbit}")
-    pre = max(pre_passes, key=lambda p: (p.cover, p.date))
+    pre = max(pre_passes, key=lambda p: (round(p.cover, 2), p.date))
     return {
         "post_id": post.id,
         "post_date": post.date.date().isoformat(),
