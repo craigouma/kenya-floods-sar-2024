@@ -17,8 +17,9 @@ Third-party inputs keep their own licences:
   rasterised versions are derivatives that remain under CC BY-SA.
 - Copernicus Sentinel-1 and Sentinel-2 data are provided under the Copernicus
   free, full and open data policy. Contains modified Copernicus Sentinel data 2024.
-- Sen1Floods11 (Bonafilia et al., 2020) is distributed by Cloud to Street under its
-  own licence and is not redistributed here.
+- Sen1Floods11 (Bonafilia et al., 2020) is distributed by Cloud to Street from a
+  public bucket whose STAC catalogue declares its licence as "proprietary". It is
+  not redistributed here; it was used only to train the models in models/.
 - JRC Global Surface Water (Pekel et al., 2016), ESA WorldCover 2021, Copernicus
   DEM GLO-30, Google Open Buildings v3, and the HDX Kenya COD-AB boundaries are
   used under their respective open licences; the ancillary subsets under
