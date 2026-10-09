@@ -115,9 +115,12 @@ def _calibration(item: pystac.Item, pol: str, lines: np.ndarray, pixels: np.ndar
 
 def _noise(item: pystac.Item, pol: str, lines: np.ndarray, pixels: np.ndarray) -> np.ndarray:
     root = _xml(item.assets[f"schema-noise-{pol}"].href)
-    rvecs = root.findall(".//noiseRangeVector")
+    # Products before IPF 2.9 (most of Sen1Floods11) carry a range-only noise LUT.
+    legacy = not root.findall(".//noiseRangeVector")
+    rvecs = root.findall(".//noiseVector" if legacy else ".//noiseRangeVector")
+    lut = "noiseLut" if legacy else "noiseRangeLut"
     rv_lines = np.array([int(v.find("line").text) for v in rvecs])
-    rng = np.stack([np.interp(pixels, _floats(v, "pixel"), _floats(v, "noiseRangeLut")) for v in rvecs])
+    rng = np.stack([np.interp(pixels, _floats(v, "pixel"), _floats(v, lut)) for v in rvecs])
     rng = np.stack([np.interp(lines, rv_lines, rng[:, j]) for j in range(len(pixels))], axis=1)
 
     az = np.ones_like(rng)
