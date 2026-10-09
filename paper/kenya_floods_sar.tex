@@ -1,0 +1,370 @@
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{geometry}
+\geometry{margin=1in}
+\usepackage{authblk}
+\usepackage[hidelinks]{hyperref}
+\usepackage{caption}
+\usepackage{xcolor}
+\usepackage{titlesec}
+\definecolor{navy}{HTML}{1A3A5C}
+\definecolor{accent}{HTML}{2563EB}
+\titleformat{\section}{\normalfont\Large\bfseries\color{navy}}{\thesection}{1em}{}
+\titleformat{\subsection}{\normalfont\large\bfseries\color{accent}}{\thesubsection}{1em}{}
+
+\title{\textbf{How Well Do Globally Trained Sentinel-1 Flood Mapping Methods\\
+Transfer to Kenya? An Evaluation Against UNOSAT Rapid Mapping\\
+of the 2024 Long-Rains Floods}}
+
+\author[1]{Craig Carlos Ouma\thanks{%
+Correspondence: \texttt{craigcarlos95@gmail.com}. Code and data:
+\texttt{github.com/craigouma}}}
+\affil[1]{Independent Researcher}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\noindent
+RESULTS-PENDING
+\end{abstract}
+
+\section{Introduction}
+\label{sec:intro}
+
+The March to May 2024 long rains were near or above average over most of
+Kenya, and at several Nairobi stations, at Thika and at Machakos they were the
+wettest season on record \cite{kmd2024}. Flooding followed along the Tana River
+in Garissa and Tana River counties and across Nairobi and the neighbouring
+counties of Kiambu and Machakos, and landslides struck Mai Mahiu and Kijabe
+in Nakuru and Kiambu \cite{unosat2024}. By 18 June the National Disaster Operations Centre counted
+315 people killed, 188 injured and 38 missing, and more than 293,200 people
+displaced since 1 March \cite{ocha2024fu7}.
+
+The United Nations Satellite Centre (UNOSAT) activated rapid mapping for the
+event under code FL20240426KEN and published flood extents for Garissa and
+the village of Mororo opposite it, for the Tana and Galana rivers, and for the
+built-up area spanning Nairobi, Kiambu and Machakos \cite{unosat2024}. Those
+maps were drawn from optical imagery, from Sentinel-2 and from very high
+resolution Pléiades scenes, because optical imagery is what a human analyst
+can interpret quickly. Optical sensors cannot see through cloud, and the long
+rains are, by definition, the cloudiest part of the year. In the six days
+either side of UNOSAT's reference dates, the three Sentinel-2 acquisitions over
+Nairobi were 52\,\%, 89\,\% and 92\,\% cloud covered and the three over
+Garissa 80\,\%, 36\,\% and 100\,\%, as reported for the whole 110\,km tile.
+
+Sentinel-1 carries a C-band synthetic aperture radar (SAR) that images through
+cloud, by day and night, and its data are free. Since the loss of Sentinel-1B in
+December 2021, coverage has thinned: Garissa, for example, was imaged on a
+single track every 12 days through 2024. Open water is dark in SAR because it
+reflects the radar pulse away from the sensor, and this contrast is the basis
+of every SAR flood mapping method.
+
+The methods available off the shelf were developed or trained elsewhere.
+Thresholding methods were tuned on European and South Asian floods, and the
+most widely used labelled dataset for training deep learning models on
+Sentinel-1, Sen1Floods11 \cite{bonafilia2020}, spans eleven flood events in
+eleven countries, three of them African. Whether these methods hold up on
+Kenyan landscapes, where semi-arid floodplains, cropland, informal
+settlements and dense urban fabric each scatter radar differently, has not
+been measured against an independent reference. This paper measures it.
+
+The contributions are four. First, classical and deep learning Sentinel-1
+methods are run over the 2024 event and scored against UNOSAT's reference
+maps, separately for riverine and urban settings and broken down by land
+cover, with uncertainty from a spatial block bootstrap. Second, the
+sensitivity of that agreement to the number of days between the radar and
+optical acquisitions is measured directly, by scoring every Sentinel-1 pass
+within 24 days of each reference. Third, building exposure estimated from each
+method is compared with UNOSAT's counts of affected structures. Fourth, the
+method that performs best in riverine settings is applied to every pass over
+the lower Tana between April and June 2024, as an application with its
+measured error attached.
+
+The paper is the companion to an earlier study in this series on satellite
+indicators of drought and food insecurity in northern Kenya \cite{ouma2026drought},
+and covers the opposite hydrological hazard with a second sensor type.
+
+\section{Background}
+\label{sec:background}
+
+\subsection{SAR flood mapping}
+
+The simplest method classifies a single post-event image by a backscatter
+threshold. Because the threshold depends on sensor, incidence angle, wind and
+land cover, it is usually fitted per scene, most often with Otsu's method
+\cite{otsu1979}, which chooses the threshold that maximises the separation of
+a bimodal histogram. A histogram over a whole scene is rarely bimodal when
+water covers a small fraction of it, so split-based approaches fit the
+threshold only on tiles that contain both classes
+\cite{martinis2009,chini2017}; the same idea underlies fully automated
+processing chains for Sentinel-1 \cite{twele2016,martinis2015}.
+
+Change detection compares the flood image with a reference image from dry
+conditions, usually as a log ratio, and labels as flooded the pixels that
+became darker \cite{bazi2005,hostache2012}. It removes permanently dark
+surfaces such as tarmac, sand and smooth bare soil, which single-image
+thresholds confuse with water, at the cost of needing a suitable reference
+image from the same orbit \cite{hostache2012}. Terrain descriptors such as
+Height Above the Nearest Drainage (HAND) \cite{renno2008,nobre2011} are used
+to remove water-like pixels on slopes and hilltops where flooding is
+implausible.
+
+The Copernicus Emergency Management Service now runs a global flood
+monitoring product on every Sentinel-1 acquisition, as an ensemble of three
+independently developed algorithms \cite{salamon2021,krullikowski2023}.
+
+\subsection{Sen1Floods11}
+
+Sen1Floods11 \cite{bonafilia2020} provides 4,831 chips of 512 by 512 pixels at
+10\,m from eleven flood events, each with Sentinel-1 VV and VH backscatter
+processed in Google Earth Engine. 446 chips carry hand-checked labels and are
+split into training, validation and test sets, with the Bolivia event held out
+as an unseen test; the remaining 4,385 carry weak labels from automated
+classifications of Sentinel-1 or of coincident Sentinel-2. In the original
+paper the best flood-water results came from a fully convolutional network
+trained on the Sentinel-2-derived weak labels, with a mean per-chip IoU of
+0.339 for flood water and 0.408 for all water on the test set, against 0.285
+and 0.359 for Otsu thresholding of VH. Later work has reported Sentinel-1-only
+results on the same benchmark with other architectures and loss functions
+\cite{bai2021,konapala2021}; the highest published Sen1Floods11 numbers come
+from optical foundation models \cite{jakubik2023,szwarcman2024}, which do not
+use the radar channels.
+
+\subsection{The urban SAR problem}
+
+In built-up areas, walls and the ground form corner reflectors, and floodwater
+between buildings strengthens this double-bounce return instead of darkening
+it \cite{mason2012,mason2014}. Radar shadow and layover behind tall structures
+add dark and bright artefacts unrelated to water. Floodwater in towns is
+therefore often invisible to backscatter thresholds, and approaches that work
+there rely on interferometric coherence or on combining SAR with an elevation
+model of the urban surface \cite{mason2021}. The Sen1Floods11 validation data
+include no urban flood events \cite{bonafilia2020}.
+
+\section{Data}
+\label{sec:data}
+
+RESULTS-PENDING-DATA
+
+\section{Methods}
+\label{sec:methods}
+
+RESULTS-PENDING-METHODS
+
+\section{Results: Sen1Floods11 test performance}
+\label{sec:s1f}
+
+RESULTS-PENDING
+
+\section{Results: transfer to Kenya}
+\label{sec:kenya}
+
+RESULTS-PENDING
+
+\section{Exposure estimates against UNOSAT counts}
+\label{sec:exposure}
+
+RESULTS-PENDING
+
+\section{Lower Tana flood time series}
+\label{sec:tana}
+
+RESULTS-PENDING
+
+\section{Implications for flood monitoring in Kenya}
+\label{sec:implications}
+
+RESULTS-PENDING
+
+\section{Limitations}
+\label{sec:limitations}
+
+RESULTS-PENDING
+
+\section*{Reproducibility statement}
+
+RESULTS-PENDING
+
+\begin{thebibliography}{99}
+
+\bibitem{bai2021}
+Bai, Y., Wu, W., Yang, Z., Yu, J., Zhao, B., Liu, X., Yang, H., Mas, E., and
+Koshimura, S. (2021). Enhancement of detecting permanent water and temporary
+water in flood disasters by fusing Sentinel-1 and Sentinel-2 imagery using
+deep learning algorithms: demonstration of Sen1Floods11 benchmark datasets.
+\textit{Remote Sensing}, 13(11), 2220.
+
+\bibitem{bazi2005}
+Bazi, Y., Bruzzone, L., and Melgani, F. (2005). An unsupervised approach based
+on the generalized Gaussian model to automatic change detection in
+multitemporal SAR images. \textit{IEEE Transactions on Geoscience and Remote
+Sensing}, 43(4), 874-887.
+
+\bibitem{bonafilia2020}
+Bonafilia, D., Tellman, B., Anderson, T., and Issenberg, E. (2020).
+Sen1Floods11: a georeferenced dataset to train and test deep learning flood
+algorithms for Sentinel-1. In \textit{2020 IEEE/CVF Conference on Computer
+Vision and Pattern Recognition Workshops (CVPRW)}, pp. 835-845.
+
+\bibitem{chini2017}
+Chini, M., Hostache, R., Giustarini, L., and Matgen, P. (2017). A hierarchical
+split-based approach for parametric thresholding of SAR images: flood
+inundation as a test case. \textit{IEEE Transactions on Geoscience and Remote
+Sensing}, 55(12), 6975-6988.
+
+\bibitem{copdem}
+European Space Agency and Airbus (2022). \textit{Copernicus DEM}.
+\url{https://doi.org/10.5270/ESA-c5d3d65}
+
+\bibitem{hostache2012}
+Hostache, R., Matgen, P., and Wagner, W. (2012). Change detection approaches
+for flood extent mapping: how to select the most adequate reference image from
+online archives? \textit{International Journal of Applied Earth Observation
+and Geoinformation}, 19, 205-213.
+
+\bibitem{jakubik2023}
+Jakubik, J., Roy, S., Phillips, C. E., Fraccaro, P., Godwin, D., Zadrozny, B.,
+Szwarcman, D., Gomes, C., Nyirjesy, G., Edwards, B., Kimura, D., Simumba, N.,
+Chu, L., Mukkavilli, S. K., Lambhate, D., Das, K., Bangalore, R., Oliveira,
+D., Muszynski, M., Ankur, K., Ramasubramanian, M., Gurung, I., Khallaghi, S.,
+Li, H., Cecil, M., Ahmadi, M., Kordi, F., Alemohammad, H., Maskey, M., Ganti,
+R., Weldemariam, K., and Ramachandran, R. (2023). Foundation models for
+generalist geospatial artificial intelligence. arXiv:2310.18660.
+
+\bibitem{kmd2024}
+Kenya Meteorological Department (2024). Climate outlook for the June-July-August
+2024 season and rainfall review of the March-April-May 2024 ``long rains''
+season. Ref. KMD/FCST/5-2024/SO/02, 31 May 2024.
+
+\bibitem{konapala2021}
+Konapala, G., Kumar, S. V., and Ahmad, S. K. (2021). Exploring Sentinel-1 and
+Sentinel-2 diversity for flood inundation mapping using deep learning.
+\textit{ISPRS Journal of Photogrammetry and Remote Sensing}, 180, 163-173.
+
+\bibitem{krullikowski2023}
+Krullikowski, C., Chow, C., Wieland, M., Martinis, S., Bauer-Marschallinger,
+B., Roth, F., Matgen, P., Chini, M., Hostache, R., Li, Y., and Salamon, P.
+(2023). Estimating ensemble likelihoods for the Sentinel-1-based global flood
+monitoring product of the Copernicus Emergency Management Service.
+\textit{IEEE Journal of Selected Topics in Applied Earth Observations and
+Remote Sensing}, 16, 6917-6930.
+
+\bibitem{martinis2009}
+Martinis, S., Twele, A., and Voigt, S. (2009). Towards operational near
+real-time flood detection using a split-based automatic thresholding procedure
+on high resolution TerraSAR-X data. \textit{Natural Hazards and Earth System
+Sciences}, 9(2), 303-314.
+
+\bibitem{martinis2015}
+Martinis, S., Kersten, J., and Twele, A. (2015). A fully automated TerraSAR-X
+based flood service. \textit{ISPRS Journal of Photogrammetry and Remote
+Sensing}, 104, 203-212.
+
+\bibitem{mason2012}
+Mason, D. C., Davenport, I. J., Neal, J. C., Schumann, G. J.-P., and Bates,
+P. D. (2012). Near real-time flood detection in urban and rural areas using
+high-resolution synthetic aperture radar images. \textit{IEEE Transactions on
+Geoscience and Remote Sensing}, 50(8), 3041-3052.
+
+\bibitem{mason2014}
+Mason, D. C., Giustarini, L., Garcia-Pintado, J., and Cloke, H. L. (2014).
+Detection of flooded urban areas in high resolution synthetic aperture radar
+images using double scattering. \textit{International Journal of Applied Earth
+Observation and Geoinformation}, 28, 150-159.
+
+\bibitem{mason2021}
+Mason, D. C., Dance, S. L., and Cloke, H. L. (2021). Floodwater detection in
+urban areas using Sentinel-1 and WorldDEM data. \textit{Journal of Applied
+Remote Sensing}, 15(3), 032003.
+
+\bibitem{nemni2020}
+Nemni, E., Bullock, J., Belabbes, S., and Bromley, L. (2020). Fully
+convolutional neural network for rapid flood segmentation in synthetic
+aperture radar imagery. \textit{Remote Sensing}, 12(16), 2532.
+
+\bibitem{nobre2011}
+Nobre, A. D., Cuartas, L. A., Hodnett, M., Renn\'o, C. D., Rodrigues, G.,
+Silveira, A., Waterloo, M., and Saleska, S. (2011). Height Above the Nearest
+Drainage: a hydrologically relevant new terrain model. \textit{Journal of
+Hydrology}, 404(1-2), 13-29.
+
+\bibitem{ocha2024fu7}
+UN Office for the Coordination of Humanitarian Affairs (2024). Kenya: Heavy
+Rains and Flooding Update, Flash Update \#7 (19 June 2024).
+\url{https://www.unocha.org/publications/report/kenya/kenya-heavy-rains-and-flooding-update-flash-update-7-19-june-2024}
+
+\bibitem{otsu1979}
+Otsu, N. (1979). A threshold selection method from gray-level histograms.
+\textit{IEEE Transactions on Systems, Man, and Cybernetics}, 9(1), 62-66.
+
+\bibitem{ouma2026drought}
+Ouma, C. C. (2026). Satellite-derived drought indicators as early predictors of
+food insecurity risk in northern Kenya's arid and semi-arid lands. Preprint.
+\url{https://craigouma.github.io/eo-drought-food-security-kenya/}
+
+\bibitem{pekel2016}
+Pekel, J.-F., Cottam, A., Gorelick, N., and Belward, A. S. (2016).
+High-resolution mapping of global surface water and its long-term changes.
+\textit{Nature}, 540(7633), 418-422.
+
+\bibitem{planetary2022}
+Microsoft Open Source, McFarland, M., Emanuele, R., Morris, D., and
+Augspurger, T. (2022). \textit{microsoft/PlanetaryComputer: October 2022}.
+Zenodo. \url{https://doi.org/10.5281/zenodo.7261897}
+
+\bibitem{renno2008}
+Renn\'o, C. D., Nobre, A. D., Cuartas, L. A., Soares, J. V., Hodnett, M. G.,
+Tomasella, J., and Waterloo, M. J. (2008). HAND, a new terrain descriptor using
+SRTM-DEM: mapping terra-firme rainforest environments in Amazonia.
+\textit{Remote Sensing of Environment}, 112(9), 3469-3481.
+
+\bibitem{ronneberger2015}
+Ronneberger, O., Fischer, P., and Brox, T. (2015). U-Net: convolutional
+networks for biomedical image segmentation. In \textit{Medical Image Computing
+and Computer-Assisted Intervention, MICCAI 2015}, pp. 234-241. Springer.
+
+\bibitem{salamon2021}
+Salamon, P., McCormick, N., Reimer, C., Clarke, T., Bauer-Marschallinger, B.,
+Wagner, W., Martinis, S., Chow, C., B\"ohnke, C., Matgen, P., Chini, M.,
+Hostache, R., Molini, L., Fiori, E., and Walli, A. (2021). The new, systematic
+global flood monitoring product of the Copernicus Emergency Management
+Service. In \textit{2021 IEEE International Geoscience and Remote Sensing
+Symposium (IGARSS)}, pp. 1053-1056.
+
+\bibitem{sirko2021}
+Sirko, W., Kashubin, S., Ritter, M., Annkah, A., Bouchareb, Y. S. E., Dauphin,
+Y., Keysers, D., Neumann, M., Cisse, M., and Quinn, J. (2021).
+Continental-scale building detection from high resolution satellite imagery.
+arXiv:2107.12283.
+
+\bibitem{szwarcman2024}
+Szwarcman, D., Roy, S., Fraccaro, P., et al. (2024). Prithvi-EO-2.0: a
+versatile multi-temporal foundation model for Earth observation applications.
+arXiv:2412.02732.
+
+\bibitem{twele2016}
+Twele, A., Cao, W., Plank, S., and Martinis, S. (2016). Sentinel-1-based flood
+mapping: a fully automated processing chain. \textit{International Journal of
+Remote Sensing}, 37(13), 2990-3004.
+
+\bibitem{unosat2024}
+UNITAR Satellite Centre (UNOSAT) (2024). Flood products for activation
+FL20240426KEN (GDACS 1102561), Kenya, 29 April to 5 May 2024. Humanitarian
+Data Exchange. \url{https://data.humdata.org/organization/unosat}
+
+\bibitem{zanaga2022}
+Zanaga, D., Van De Kerchove, R., Daems, D., De Keersmaecker, W., Brockmann, C.,
+Kirches, G., Wevers, J., Cartus, O., Santoro, M., Fritz, S., Lesiv, M.,
+Herold, M., Tsendbazar, N.-E., Xu, P., Ramoino, F., and Arino, O. (2022).
+\textit{ESA WorldCover 10 m 2021 v200}. Zenodo.
+\url{https://doi.org/10.5281/zenodo.7254221}
+
+\end{thebibliography}
+
+\end{document}
