@@ -67,8 +67,8 @@ def run(aoi: str) -> list[dict]:
     return [{"aoi": aoi, "method": k, "threshold_db": thresholds.get(k)} for k in masks]
 
 
-def main() -> None:
-    aois = sys.argv[1:] or list(pd.read_csv(SCENES)["aoi"])
+def main(aois: list[str] | None = None) -> None:
+    aois = aois or list(pd.read_csv(SCENES)["aoi"])
     rows = [r for aoi in aois for r in run(aoi)]
     df = pd.DataFrame(rows)
     path = OUTPUTS / "thresholds.csv"
@@ -80,4 +80,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1:])
