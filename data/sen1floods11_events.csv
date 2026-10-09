@@ -1,0 +1,13 @@
+ID,location,chip_prefix,ISO_CC,s1_date,s2_date,orbit,rel_orbit_num,VH_thresh,hand_chips,africa,east_africa
+1,Bolivia,Bolivia,BOL,2018/02/15,2018/02/15,DESCENDING,156.0,-20.44,15,False,False
+2,Ghana,Ghana,GHA,2018/09/18,2018/09/19,ASCENDING,147.0,-22.81,53,True,False
+3,India,India,IND,2016/08/12,2016/08/12,DESCENDING,77.0,-21.56,68,False,False
+4,Cambodia,Mekong,KHM,2018/08/05,2018/08/04,ASCENDING,26.0,-23.06,30,False,False
+5,Nigeria,Nigeria,NGA,2018/09/21,2018/09/20,ASCENDING,103.0,-21.94,18,True,False
+6,Pakistan,Pakistan,PAK,2017/06/28,2017/06/28,DESCENDING,5.0,-19.56,28,False,False
+7,Paraguay,Paraguay,PRY,2018/10/31,2018/10/31,DESCENDING,68.0,-19.94,67,False,False
+8,Somalia,Somalia,SOM,2018/05/07,2018/05/05,ASCENDING,116.0,-21.06,26,True,True
+9,Spain,Spain,ESP,2019/09/17,2019/09/18,DESCENDING,110.0,-25.13,30,False,False
+10,Sri-Lanka,Sri-Lanka,LKA,2017/05/30,2017/05/28,DESCENDING,19.0,-21.69,42,False,False
+11,USA,USA,USA,2019/05/22,2019/05/22,ASCENDING,136.0,-22.62,69,False,False
+12,Colombia,Colombia,COL,2018/08/22,2018/08/23,ASCENDING,106.0,-21.31,0,False,False
