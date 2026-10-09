@@ -38,12 +38,14 @@ IGNORE = 255
 CROP = 256
 
 
-def fetch(root: Path) -> None:
+def fetch(root: Path, weak: bool) -> None:
     import gcsfs
 
     fs = gcsfs.GCSFileSystem(token="anon")
     jobs = []
     for local, remote in GCS_FOLDERS.items():
+        if local.startswith("WeaklyLabeled") and not weak:
+            continue
         (root / local).mkdir(parents=True, exist_ok=True)
         for r in fs.ls(f"{BUCKET}/{remote}"):
             target = root / local / r.rsplit("/", 1)[1]
@@ -181,7 +183,7 @@ def main() -> None:
     ap.add_argument("--seed", type=int, default=0)
     args = ap.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
-    fetch(args.data)
+    fetch(args.data, weak=any(r.endswith("hand_weak") for r in args.runs))
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     root = args.data
     results = {}

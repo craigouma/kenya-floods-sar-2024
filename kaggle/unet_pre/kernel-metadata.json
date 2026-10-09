@@ -1,0 +1,13 @@
+{
+  "id": "carloscrou/kenya-floods-sar-unet-pre",
+  "title": "kenya-floods-sar-unet-pre",
+  "code_file": "run_training.py",
+  "language": "python",
+  "kernel_type": "script",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_internet": true,
+  "dataset_sources": ["carloscrou/kenya-floods-sar-code", "carloscrou/sen1floods11-pre-event-chips"],
+  "competition_sources": [],
+  "kernel_sources": []
+}
