@@ -1,0 +1,4 @@
+aoi,group,sensor,reference_date,domain_km2,flood_km2,excluded_cloud_km2,hdx_products
+garissa_s2,riverine,Sentinel-2,2024-04-29,161.57,27.94,0.54,water-extent-in-garissa-city-and-mororo-village-kenya-as-of-29-april-2024
+garissa_pl,riverine,Pléiades,2024-05-05,107.22,21.74,-0.02,satellite-detected-water-extent-in-garissa-city-and-mororo-village-kenya-as-of-5-may-2024
+nairobi_pl,urban,Pléiades,2024-05-01,506.44,59.69,73.25,flood-impact-analysis-in-nairobi-kenya-as-of-1-may-2024;flood-impact-analysis-in-nairobi-and-kiambu-county-kenya-as-of-1-may-2024;flood-impact-analysis-in-nairobi-and-machakos-county-kenya-as-of-1-may-2024;flood-impact-analysis-in-kiambu-county-kenya-as-of-1-may-2024
