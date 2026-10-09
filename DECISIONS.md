@@ -170,3 +170,15 @@ Buildings with confidence below 0.70 are dropped. UNOSAT's structure layers are
 also points, digitised on very high resolution imagery, so a third count, Open
 Buildings inside UNOSAT's own flood extent, separates disagreement in the
 building data from disagreement in the flood extent.
+
+## Impact figures
+
+Casualty and displacement figures are cited from OCHA's Kenya Heavy Rains and
+Flooding Update, Flash Update #7 (19 June 2024), quoting the National Disaster
+Operations Centre for 1 March to 18 June 2024: 315 people killed, 188 injured,
+38 missing, more than 293,200 displaced. OCHA's pages block automated reading,
+so the text was checked against the published page by hand. The same update
+gives 46 displacement camps in Tana River County hosting 34,205 people and
+three sites in Garissa County hosting about 4,140 people on 18 June. Its
+highlights say "more than 306,520" people affected and its overview "nearly
+306,520"; the number is quoted without either qualifier.
