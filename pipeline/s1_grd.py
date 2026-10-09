@@ -135,6 +135,19 @@ def _noise(item: pystac.Item, pol: str, lines: np.ndarray, pixels: np.ndarray) -
     return rng * az
 
 
+def sigma0_pass(items: list[pystac.Item], grid: Grid, ellipsoid_height: np.ndarray) -> dict[str, np.ndarray]:
+    """sigma0 from consecutive slices of one pass, each filling the other's gaps."""
+    out = {pol: np.full((grid.height, grid.width), np.nan, dtype="float32") for pol in POLS}
+    for item in items:
+        try:
+            s0 = sigma0(item, grid, ellipsoid_height)
+        except ValueError:
+            continue
+        for pol in POLS:
+            out[pol] = np.where(np.isnan(out[pol]), s0[pol], out[pol])
+    return out
+
+
 def sigma0(item: pystac.Item, grid: Grid, ellipsoid_height: np.ndarray) -> dict[str, np.ndarray]:
     """Return sigma0 in dB for VV and VH on `grid`; NaN outside the swath."""
     line, pixel = radar_coordinates(item, grid, ellipsoid_height)
