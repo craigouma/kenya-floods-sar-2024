@@ -150,12 +150,181 @@ include no urban flood events \cite{bonafilia2020}.
 \section{Data}
 \label{sec:data}
 
-RESULTS-PENDING-DATA
+\subsection{Reference maps and their limits}
+
+UNOSAT published twelve products for activation FL20240426KEN on the
+Humanitarian Data Exchange under CC BY-SA \cite{unosat2024}. Every product
+page links the same cumulative shapefile package, and the products resolve
+into fewer independent analyses than pages (Table~\ref{tab:aois}). The four
+urban flood products are views of one Pléiades analysis of 1 May 2024 with a
+single 580\,km$^2$ extent, flood layer and structure layer; their reported
+structure counts (3,387, 3,663, 4,246 and 1,815) sum to exactly the 13,111
+points in that layer. They are treated here as one area of interest (AOI). The
+Sentinel-2 analysis of Garissa on 29 April has no flood layer of its own in the
+package, and its flood water is taken from the Tana and Galana product derived
+from the same image, clipped to the Garissa extent; this gives 27.9\,km$^2$
+against the 26\,km$^2$ UNOSAT reports. The Tana and Galana product covers
+70,874\,km$^2$ and has no product page of its own. The national NOAA-VIIRS
+composite (375\,m pixels), the Mai Mahiu landslide product and three cropland
+subsets of the urban analysis are not used.
+
+\begin{table}[h]
+\centering
+\small
+\caption{Reference analyses used. Day gap is the Sentinel-1 date minus the
+reference image date for the pass used in the headline results.}
+\label{tab:aois}
+\begin{tabular}{llllrr}
+\toprule
+AOI & Group & Reference image & Sentinel-1 pass & Day gap & Flood water (km$^2$) \\
+\midrule
+RESULTS-PENDING-AOITABLE
+\bottomrule
+\end{tabular}
+\end{table}
+
+These maps are an independent reference, not ground truth. Each product
+states that it is a preliminary analysis not yet validated in the field. They
+were digitised from optical images by analysts working to a deadline, at
+resolutions from 0.5\,m (Pléiades) to 10\,m (Sentinel-2), and they record
+water as seen from above: flooding under tree canopy, or water so shallow or
+turbid that it is spectrally indistinguishable from wet soil, may be missed or
+mapped inconsistently. They were also acquired on different days from the
+radar. Disagreement between a SAR method and these maps therefore combines
+errors of the method, errors of the reference and real change between the
+two acquisitions. Every UNOSAT flood layer used here is classed as new flood
+water, separate from the river, and UNOSAT's cloud-obstruction polygons,
+where its analysts could not see the ground, are removed from the evaluation
+domain.
+
+\subsection{Sentinel-1 imagery}
+
+Sentinel-1 Interferometric Wide swath Ground Range Detected (GRD) scenes in VV
+and VH polarisation were read from Microsoft Planetary Computer
+\cite{planetary2022}. Its radiometrically terrain corrected collection now
+requires an account, so the GRD scenes were processed here: thermal noise
+removal, calibration to $\sigma^0$ from the product's annotation tables, and
+geocoding from the annotation geolocation grid onto a 10\,m UTM zone 37S grid,
+with each pixel shifted in range by $(h - h_\mathrm{ann})/\tan\theta$ for its
+height $h$ above the ellipsoid, where $h_\mathrm{ann}$ is the terrain height
+the GRD was projected to and $\theta$ the incidence angle. Heights come from
+the Copernicus DEM GLO-30 \cite{copdem} converted from EGM2008 to ellipsoidal
+height (the geoid lies 27\,m below the ellipsoid at Garissa and 16\,m at
+Nairobi). No radiometric terrain flattening is applied. This reproduces the
+processing behind the Sen1Floods11 chips. On 18 hand-labelled chips from nine
+events, processing the original scenes this way reproduced the Sen1Floods11
+values with a median bias between $-0.02$ and $+0.04$\,dB and a median
+correlation of 0.97, with zero or one pixel of offset for all events except
+one, so models trained on Sen1Floods11 see Kenyan inputs from the same
+radiometric domain.
+
+For each AOI the post-event pass is the one closest in time to the reference
+image, and the pre-event pass is the latest January or February 2024
+acquisition from the same relative orbit. A pass is all slices of one
+datatake that image the AOI, mosaicked. Garissa is covered by a single track
+(relative orbit 159, ascending) and the Nairobi area by one other (relative
+orbit 57, ascending).
+
+\subsection{Training data}
+
+Sen1Floods11 v1.1 \cite{bonafilia2020} was downloaded from its public bucket.
+Three of its eleven events are African: Ghana (53 hand-labelled chips),
+Nigeria (18) and Somalia (26). Somalia, the Juba and Shabelle floods of May
+2018, is the only East African event, so the transfer to Kenya is out of
+region for most of the training data but not all of it. No Kenyan data, and
+no UNOSAT data, were used in training.
+
+\subsection{Ancillary layers}
+
+Permanent water is taken from JRC Global Surface Water occurrence
+\cite{pekel2016}, land cover from ESA WorldCover 2021 at 10\,m
+\cite{zanaga2022}, HAND from the global GLO-30 HAND layer derived from the
+Copernicus DEM, buildings from Google Open Buildings v3 \cite{sirko2021} and
+county boundaries from the Kenya common operational dataset on the
+Humanitarian Data Exchange, as in the companion study
+\cite{ouma2026drought}.
 
 \section{Methods}
 \label{sec:methods}
 
-RESULTS-PENDING-METHODS
+\subsection{Classical methods}
+
+Four classical methods were run, each on VV and on VH. \textbf{Otsu
+thresholding} labels as water every pixel of the 3\,$\times$\,3 focal mean of
+post-event backscatter below a threshold fitted with Otsu's method
+\cite{otsu1979}. Following the Sen1Floods11 reference classification
+\cite{bonafilia2020}, the threshold is fitted on the pooled histogram of the
+most heterogeneous 1\,km tiles (the top 10\,\%, at least five), since a
+histogram dominated by dry land is not bimodal. \textbf{Change detection}
+uses the difference in dB between the smoothed post-event and pre-event images,
+which is the log ratio of the two, and labels as flooded the pixels that
+darkened by more than a threshold. Two thresholds are compared: Otsu's,
+fitted the same way and capped at 0\,dB so that brightening is never labelled
+as flooding, and a fixed $-3$\,dB.
+
+\subsection{U-Nets trained on Sen1Floods11}
+
+A four-level U-Net \cite{ronneberger2015} with 32 base channels and group
+normalisation was trained on Sentinel-1 VV and VH chips. Training follows the
+original paper's setting that gave its best flood-water results: the
+hand-labelled training split plus the weakly labelled chips with labels
+derived from Sentinel-2, random 256\,$\times$\,256 crops with flips, cross
+entropy weighted 1:8 towards water, AdamW with learning rate $5\times10^{-4}$
+and weight decay $10^{-2}$, and cosine annealing with warm restarts. Inputs
+are scaled exactly as in the reference code. The Bolivia event is held out
+entirely, including the weakly labelled Bolivia chips that the public bucket
+contains, and the checkpoint with the best mean per-chip IoU on the
+validation split is kept. RESULTS-PENDING-EPOCHS
+
+Sen1Floods11 has no pre-event imagery. To test whether a model that sees the
+dry-season image does better, pre-event chips were built for the
+hand-labelled set with the processing described above, from the latest pass
+on the same relative orbit at least 30 days before each event; 419 of the 446
+chips have one. A U-Net with four input channels (post and pre VV and VH) was
+trained on the hand-labelled chips that have a pair, alongside a control with
+the post-event channels only, trained on the same chips. The two differ only in
+their inputs.
+
+\subsection{Post-processing}
+
+Every method's output is post-processed identically. Pixels with JRC water
+occurrence above 80\,\% are removed from the prediction and from the
+evaluation domain. A second variant also sets to dry every pixel more than
+20\,m above the nearest drainage. The JRC rule removes almost nothing along
+the Tana at Garissa, where occurrence peaks at 72\,\% because the channel
+migrates and carries sediment.
+
+\subsection{Evaluation}
+
+Agreement is measured for the flood class as intersection over union (IoU),
+F1, precision and recall over the evaluation domain: the UNOSAT analysis
+extent minus cloud obstruction, permanent water, and pixels without radar
+data. AOIs are grouped as riverine and rural (Garissa and the Tana and Galana
+corridor) and urban and peri-urban (the Nairobi, Kiambu and Machakos
+analysis), and the groups are reported separately throughout because SAR
+behaves differently in built-up areas. Within a group, confusion counts are
+pooled across AOIs. The 95\,\% intervals come from 1,000 bootstrap resamples
+of 1\,km blocks rather than pixels, since neighbouring pixels are strongly
+correlated. Results are also broken down by ESA WorldCover class.
+
+The Tana and Galana product cannot be evaluated over its whole 70,874\,km$^2$
+without scoring mostly dry land far from any river. It is evaluated along a
+corridor defined independently of the reference: land within 5\,km of any
+300\,m cell where JRC water occurrence reaches 50\,\%, cut into 20\,km tiles
+and excluding the Garissa extent, which is scored on its own. The corridor
+covers 8,785\,km$^2$ and contains 361 of the 469\,km$^2$ of flood water in
+that product.
+
+To measure the effect of the time between the radar and optical images, every
+Sentinel-1 pass within 24 days of each point AOI's reference date was run
+through the same methods and scored against the same reference.
+
+Building exposure is the number of Open Buildings v3 centroids with confidence
+of at least 0.70 inside each flood mask and the evaluation domain. UNOSAT
+counted affected structures on its own imagery, not on Open Buildings, so the
+number of Open Buildings centroids inside UNOSAT's own flood extent is reported
+as well, to separate disagreement in the building data from disagreement in
+the flood extent.
 
 \section{Results: Sen1Floods11 test performance}
 \label{sec:s1f}
