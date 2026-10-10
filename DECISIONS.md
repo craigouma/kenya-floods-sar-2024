@@ -224,7 +224,7 @@ classical methods only and the script refuses U-Nets at any other resolution.
 **Region.** The brief asks for the full lower Tana basin in Garissa and Tana
 River counties. The series covers the 38 corridor tiles that intersect those
 two counties plus the Garissa extent, rather than both counties entire
-(about 83,000 km²): the U-Net was only evaluated along the corridor, its error
+(82,751 km² in the COD-AB boundaries): the U-Net was only evaluated along the corridor, its error
 there is what the series inherits, and processing both counties at 10 m for
 every pass was not practical on this machine. Flooding away from the rivers
 is not counted.
