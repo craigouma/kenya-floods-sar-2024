@@ -190,7 +190,17 @@ from the same image, clipped to the Garissa extent; this gives 27.9\,km$^2$
 against the 26\,km$^2$ UNOSAT reports. The Tana and Galana product covers
 70,874\,km$^2$ and has no product page of its own. The national NOAA-VIIRS
 composite (375\,m pixels), the Mai Mahiu landslide product and three cropland
-subsets of the urban analysis are not used.
+subsets of the urban analysis are not used. Figure~\ref{fig:map} locates the
+areas used.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.62\textwidth]{fig_aoi_map.png}
+\caption{Areas evaluated: the UNOSAT analysis extents at Garissa and in the
+Nairobi, Kiambu and Machakos area, and the 70 tiles of the Tana and Galana
+corridor, over Kenya's county boundaries.}
+\label{fig:map}
+\end{figure}
 
 \begin{table}[h]
 \centering
@@ -250,8 +260,9 @@ For each AOI the post-event pass is the one closest in time to the reference
 image, and the pre-event pass is the latest January or February 2024
 acquisition from the same relative orbit. A pass is all slices of one
 datatake that image the AOI, mosaicked. Garissa is covered by a single track
-(relative orbit 159, ascending) and the Nairobi area by one other (relative
-orbit 57, ascending).
+(relative orbit 159, ascending) and the Nairobi area by two (relative orbits
+57 and 130, both ascending); the headline Nairobi pass is on orbit 57, on the
+day of the reference.
 
 \subsection{Training data}
 
@@ -569,7 +580,7 @@ analysis on 1 May, of which 12,985 fall inside the evaluation domain here
 \cite{unosat2024}. Those counts were digitised by analysts on very high
 resolution imagery. Table~\ref{tab:exposure} sets against them the number of
 Google Open Buildings v3 centroids \cite{sirko2021} inside each method's flood
-mask, and inside UNOSAT's own flood extent. The last row separates the two
+mask, and inside UNOSAT's own flood extent. The first row separates the two
 sources of disagreement: even with UNOSAT's flood extent, Open Buildings gives
 0.72, 1.26 and 0.67 times UNOSAT's counts, so differences of about 30\,\% in
 either direction come from the building data alone, and agreement closer than
@@ -596,7 +607,7 @@ Otsu, VH & 797 (0.23) & 327 (0.10) & 1,484 (0.11) \\
 \end{tabular}
 \end{table}
 
-The method that maps flood extent best is the worst at finding flooded
+The method that maps flood extent best is among the worst at finding flooded
 buildings. The U-Net trained on hand-labelled and weak labels puts 116, 488
 and 757 buildings in its masks, between 0.03 and 0.14 times UNOSAT's counts.
 Its masks follow open floodplain and almost never enter settlements, which is
@@ -708,9 +719,9 @@ urban elevation models \cite{mason2021} are the established ways forward,
 and the Sen1Floods11 training data contain no urban events from which a
 model could learn the urban signature.
 
-The fourth concerns the reference itself. The single largest factor in
-apparent accuracy at Garissa was not the method but the three days between
-the radar and the optical image while the river was rising. Rapid mapping
+The fourth concerns the reference itself. At Garissa, the three days between
+the radar and the optical image while the river was rising changed agreement
+more than the choice of method did. Rapid mapping
 products are made from whichever image is available first, and an evaluation
 that ignores the acquisition dates would have attributed a timing effect to
 the method. Any routine comparison between SAR products and rapid mapping in
@@ -745,8 +756,8 @@ water. Flooding farther from the rivers, and false alarms there, are not
 scored.
 
 SAR physics limits what any backscatter method can see in towns, and none of
-the methods here uses coherence. The urban result should be read as the
-performance of backscatter methods, not of SAR in general.
+the methods here uses coherence. The urban result describes backscatter
+methods; coherence-based methods were not tested.
 
 The U-Net was trained with the original paper's labels and schedule but a
 different architecture, and on one seed; its Kenyan scores would vary
