@@ -595,12 +595,91 @@ RESULTS-PENDING
 \section{Implications for flood monitoring in Kenya}
 \label{sec:implications}
 
-RESULTS-PENDING
+The first implication is that a model trained on Sen1Floods11 transfers to
+Kenyan floodplains well enough to use, and better than the classical methods
+that are easier to deploy. Along the lower Tana it agreed with an independent
+optical reference about twice as well as the best threshold or change rule,
+its total flooded area was within 1\,\% of UNOSAT's on two references, and its
+agreement on the one reference matched in time and resolution (IoU 0.544 at
+Garissa on 5 May) is comparable to its score on Sen1Floods11's own test
+chips. The training set contains one East African event among eleven, so this
+is mostly out-of-region transfer, and it held. A Kenyan monitoring system that
+receives Sentinel-1 scenes every 12 days could produce cloud-independent flood
+extent along the Tana and its peers with a public model and public data,
+which is what Section~\ref{sec:tana} does for April to June 2024.
+
+The second is that the same model should not be used to count affected
+people or buildings. Its masks avoid settlements, so building exposure
+computed from them would understate impact by an order of magnitude in both
+Garissa and Nairobi. Change detection with a fixed threshold, despite its
+lower pixel agreement, came within the range expected from the building data
+alone. A practical system would use one product for extent and another, or
+explicit treatment of built-up areas, for exposure; a single headline
+accuracy figure would hide this.
+
+The third is that radar alone does not resolve urban flooding in Nairobi.
+Every method, including the U-Net, finds about a quarter of the flood water
+UNOSAT mapped from Pléiades on the same day, and none is clearly better than
+the others. Urban flooding in Nairobi and its neighbours is short-lived and
+concentrated along narrow river corridors and among buildings, where
+backscatter brightens instead of darkening. Interferometric coherence and
+urban elevation models \cite{mason2021} are the established ways forward,
+and the Sen1Floods11 training data contain no urban events from which a
+model could learn the urban signature.
+
+The fourth concerns the reference itself. The single largest factor in
+apparent accuracy at Garissa was not the method but the three days between
+the radar and the optical image while the river was rising. Rapid mapping
+products are made from whichever image is available first, and an evaluation
+that ignores the acquisition dates would have attributed a timing effect to
+the method. Any routine comparison between SAR products and rapid mapping in
+Kenya should report the day gap, and during a rising flood a pass a few days
+after the optical image can be a better match than one a few days before it.
 
 \section{Limitations}
 \label{sec:limitations}
 
-RESULTS-PENDING
+The reference maps are preliminary rapid analyses, not field-validated
+ground truth, and they were made from optical imagery by analysts working
+quickly. They can miss water under canopy and shallow water that looks like
+wet soil, and the Tana and Galana analysis in particular was mapped at
+10\,m over 70,874\,km$^2$. Part of every method's disagreement with them is
+the reference's error, which this design cannot separate from the method's.
+
+The radar and optical images were acquired on different days, by three days
+at Garissa, two to three days along the Tana and on the same day only in
+Nairobi. Section~\ref{sec:kenya} shows that three days during a rising flood
+are enough to change IoU by a factor of almost three.
+
+There are few independent analyses. The riverine group rests on two reference
+dates at Garissa and one Sentinel-2 product along the Tana and Galana, and
+the urban group on a single Pléiades analysis. The 70 corridor tiles are not
+70 independent tests: they share one reference image and, for 57 of them, one
+radar pass. The block bootstrap accounts for spatial correlation within these
+analyses but not for the small number of analyses.
+
+The corridor was defined from JRC water rather than from the reference, but
+it still restricts the Tana evaluation to land within 5\,km of persistent
+water. Flooding farther from the rivers, and false alarms there, are not
+scored.
+
+SAR physics limits what any backscatter method can see in towns, and none of
+the methods here uses coherence. The urban result should be read as the
+performance of backscatter methods, not of SAR in general.
+
+The U-Net was trained with the original paper's labels and schedule but a
+different architecture, and on one seed; its Kenyan scores would vary
+somewhat between training runs. The pre-event U-Net and its control were
+trained on about 240 chips, eighteen times fewer than the main model, so the
+comparison between them is informative but neither is a competitive model on
+its own.
+
+Building counts use Open Buildings v3 centroids above a single confidence
+threshold, while UNOSAT counted structures on its own imagery. The comparison
+is approximate by construction, and the row computed with UNOSAT's own flood
+extent shows how approximate.
+
+No result here was validated in the field.
 
 \section*{Reproducibility statement}
 
