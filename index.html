@@ -294,7 +294,26 @@
 
   <div class="section-label">Abstract</div>
   <div class="abstract-box">
-    <p>ABSTRACT-PENDING</p>
+    <p>Kenya's March to May 2024 long rains brought flooding along the Tana River
+    and across Nairobi and its neighbouring counties, and UNOSAT mapped it from
+    optical satellite imagery, which cloud blocks during the rains. This paper
+    measures how well Sentinel-1 radar flood mapping methods developed elsewhere
+    transfer to these Kenyan landscapes, using UNOSAT's maps as an independent
+    reference. Nine methods were compared, from Otsu thresholds and change
+    detection to U-Nets trained on Sen1Floods11, with no Kenyan data used in
+    training. In riverine settings, at Garissa and along 8,785 km² of the Tana
+    and Galana rivers, the main U-Net agreed with UNOSAT at an IoU of 0.347
+    (95% interval 0.331 to 0.364), against 0.160 for the best classical
+    method, and its flooded area was within about 1% of UNOSAT's on two
+    references. In the urban analysis of Nairobi, Kiambu and Machakos every
+    method's interval overlapped, and built-up land was where all nine failed.
+    Timing mattered as much as method: at Garissa the U-Net scored 0.215
+    against a reference three days after the radar pass and 0.581 against one
+    nine days before it, because the river was still rising. The best extent
+    model placed only 3 to 14% of UNOSAT's affected buildings inside its masks,
+    so extent and exposure call for different products. Applied to every pass
+    from April to June, the U-Net shows flood water on the middle Tana peaking
+    at 535 km² on 20 May and near the delta about four weeks later.</p>
   </div>
 
   <hr>
