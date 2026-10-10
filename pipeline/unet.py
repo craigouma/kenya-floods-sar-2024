@@ -52,14 +52,17 @@ class UNet(nn.Module):
 
 
 @torch.no_grad()
-def predict(model: nn.Module, db: np.ndarray, tile: int = 512, overlap: int = 64) -> np.ndarray:
-    """Water probability for an arbitrarily sized scene by overlapping tiles."""
+def predict(model: nn.Module, db: np.ndarray, tile: int = 512, overlap: int = 64,
+            valid: np.ndarray | None = None) -> np.ndarray:
+    """Water probability for an arbitrarily sized scene by overlapping tiles,
+    skipping tiles with no valid pixel."""
     model.eval()
     device = next(model.parameters()).device
     x = scale(db)
     _, h, w = x.shape
     ph, pw = max(h, tile), max(w, tile)
     x = np.pad(x, ((0, 0), (0, ph - h), (0, pw - w)), mode="reflect")
+    keep = np.pad(np.ones((h, w), bool) if valid is None else valid, ((0, ph - h), (0, pw - w)))
     prob = np.zeros((ph, pw), "float32")
     weight = np.zeros((ph, pw), "float32")
     step = tile - overlap
@@ -67,8 +70,11 @@ def predict(model: nn.Module, db: np.ndarray, tile: int = 512, overlap: int = 64
     cols = sorted({*range(0, pw - tile + 1, step), pw - tile})
     for r in rows:
         for c in cols:
+            if not keep[r : r + tile, c : c + tile].any():
+                continue
             t = torch.from_numpy(x[None, :, r : r + tile, c : c + tile]).to(device)
             p = torch.softmax(model(t), dim=1)[0, 1].cpu().numpy()
             prob[r : r + tile, c : c + tile] += p
             weight[r : r + tile, c : c + tile] += 1
-    return (prob / weight)[:h, :w]
+    with np.errstate(invalid="ignore"):
+        return np.nan_to_num(prob / weight)[:h, :w]

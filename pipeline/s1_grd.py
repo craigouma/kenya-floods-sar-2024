@@ -8,6 +8,7 @@ the same here keeps Kenya scenes in the radiometric domain the U-Net was
 trained on.
 """
 
+import time
 from dataclasses import dataclass
 from functools import lru_cache
 import xml.etree.ElementTree as ET
@@ -39,7 +40,7 @@ class Grid:
 
 @lru_cache(maxsize=64)
 def _xml(href: str) -> ET.Element:
-    r = requests.get(planetary_computer.sign(href), timeout=120)
+    r = requests.get(_fresh(href), timeout=120)
     r.raise_for_status()
     return ET.fromstring(r.content)
 
@@ -135,6 +136,25 @@ def _noise(item: pystac.Item, pol: str, lines: np.ndarray, pixels: np.ndarray) -
     return rng * az
 
 
+def _fresh(href: str) -> str:
+    """Re-sign with a current SAS token: items signed at search time carry a
+    token that expires during long runs, after which reads fail with 403."""
+    return planetary_computer.sign(href.split("?")[0])
+
+
+def _read_window(href: str, window: Window, attempts: int = 4) -> np.ndarray:
+    """Windowed read of a remote COG, retried because long runs meet transient
+    network failures."""
+    for attempt in range(attempts):
+        try:
+            with rasterio.open(_fresh(href)) as src:
+                return src.read(1, window=window).astype("float64")
+        except rasterio.errors.RasterioIOError:
+            if attempt == attempts - 1:
+                raise
+            time.sleep(10 * (attempt + 1))
+
+
 def sigma0_pass(items: list[pystac.Item], grid: Grid, ellipsoid_height: np.ndarray) -> dict[str, np.ndarray]:
     """sigma0 from consecutive slices of one pass, each filling the other's gaps."""
     out = {pol: np.full((grid.height, grid.width), np.nan, dtype="float32") for pol in POLS}
@@ -152,7 +172,7 @@ def sigma0(item: pystac.Item, grid: Grid, ellipsoid_height: np.ndarray) -> dict[
     """Return sigma0 in dB for VV and VH on `grid`; NaN outside the swath."""
     line, pixel = radar_coordinates(item, grid, ellipsoid_height)
     out = {}
-    with rasterio.open(planetary_computer.sign(item.assets["vv"].href)) as src:
+    with rasterio.open(_fresh(item.assets["vv"].href)) as src:
         n_lines, n_pixels = src.height, src.width
     r0 = int(max(np.floor(np.nanmin(line)) - 2, 0))
     r1 = int(min(np.ceil(np.nanmax(line)) + 3, n_lines))
@@ -162,8 +182,7 @@ def sigma0(item: pystac.Item, grid: Grid, ellipsoid_height: np.ndarray) -> dict[
         raise ValueError(f"{item.id} does not cover the target grid")
     lines, pixels = np.arange(r0, r1), np.arange(c0, c1)
     for pol in POLS:
-        with rasterio.open(planetary_computer.sign(item.assets[pol].href)) as src:
-            dn = src.read(1, window=Window(c0, r0, c1 - c0, r1 - r0)).astype("float64")
+        dn = _read_window(item.assets[pol].href, Window(c0, r0, c1 - c0, r1 - r0))
         cal = _calibration(item, pol, lines, pixels)
         power = (dn**2 - _noise(item, pol, lines, pixels)) / cal**2
         power[dn == 0] = np.nan

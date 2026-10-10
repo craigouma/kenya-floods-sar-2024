@@ -37,7 +37,7 @@ def tiled_otsu(band: np.ndarray, tile: int = TILE) -> float:
                 samples.append(vals)
     if len(samples) < 5:
         vals = band[np.isfinite(band)]
-        return float(threshold_otsu(vals))
+        return float(threshold_otsu(vals)) if vals.size else float("nan")
     keep = np.argsort(stds)[-max(5, int(len(stds) * TOP_TILE_FRACTION)) :]
     return float(threshold_otsu(np.concatenate([samples[i] for i in keep])))
 

@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Google Scholar indexing -->
+  <meta name="citation_title"
+        content="How Well Do Globally Trained Sentinel-1 Flood Mapping Methods Transfer to Kenya? An Evaluation Against UNOSAT Rapid Mapping of the 2024 Long-Rains Floods">
+  <meta name="citation_author"       content="Ouma, Craig Carlos">
+  <meta name="citation_publication_date" content="2026">
+  <meta name="citation_online_date"      content="2026/10/10">
+  <meta name="citation_language"     content="en">
+  <meta name="citation_abstract_html_url"
+        content="https://craigouma.github.io/kenya-floods-sar-2024/">
+  <meta name="citation_pdf_url"
+        content="https://craigouma.github.io/kenya-floods-sar-2024/paper/kenya_floods_sar.pdf">
+  <meta name="citation_keywords"
+        content="Sentinel-1; SAR; flood mapping; Sen1Floods11; U-Net; change detection; UNOSAT; Kenya; Tana River; urban flooding">
+
+  <!-- Open Graph -->
+  <meta property="og:title"
+        content="Sentinel-1 Flood Mapping Methods Tested on Kenya's 2024 Floods: Craig Carlos Ouma">
+  <meta property="og:description"
+        content="Classical and deep learning Sentinel-1 flood maps scored against UNOSAT rapid mapping of the 2024 Kenya floods. A Sen1Floods11 U-Net doubles the agreement of the best threshold method along the Tana, finds a quarter of Nairobi's mapped flooding, and misses most flooded buildings.">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://craigouma.github.io/kenya-floods-sar-2024/">
+
+  <title>Sentinel-1 Flood Mapping of the 2024 Kenya Long-Rains Floods: Craig Carlos Ouma</title>
+
+  <style>
+    :root {
+      --navy:    #1A3A5C;
+      --blue:    #2563EB;
+      --blue-lt: #EFF6FF;
+      --amber:   #92400E;
+      --amber-lt:#FEF3C7;
+      --bg:      #FFFFFF;
+      --bg-alt:  #F4F8FC;
+      --border:  #CBD8E6;
+      --text:    #1E2D3D;
+      --muted:   #566B7E;
+      --code-bg: #111827;
+      --code-txt:#93C5FD;
+      --serif: 'Palatino Linotype','Book Antiqua',Palatino,Georgia,serif;
+      --sans:  system-ui,-apple-system,'Segoe UI',sans-serif;
+      --mono:  'Courier New',Courier,monospace;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html{scroll-behavior:smooth}
+    body{font-family:var(--sans);background:var(--bg);color:var(--text);
+         line-height:1.65;font-size:16px}
+    .page{max-width:740px;margin:0 auto;padding:0 24px 80px}
+
+    /* Backscatter trace dropping below the water threshold, signature element */
+    .trace-header{width:100%;height:56px;margin-bottom:36px;overflow:hidden}
+    .trace-header svg{width:100%;height:56px;display:block}
+
+    .badge-row{display:flex;align-items:center;gap:10px;margin-bottom:18px;flex-wrap:wrap}
+    .badge{font-family:var(--mono);font-size:11px;font-weight:700;
+           letter-spacing:.08em;text-transform:uppercase;padding:3px 10px;
+           border-radius:3px;background:#DBEAFE;color:#1D4ED8}
+    .badge.sar{background:var(--bg-alt);color:var(--navy);border:1px solid var(--border)}
+    .badge.ind{background:var(--amber-lt);color:var(--amber)}
+    .pub-date{font-size:13px;color:var(--muted);font-family:var(--mono)}
+
+    h1{font-family:var(--serif);font-size:clamp(22px,4vw,30px);font-weight:700;
+       line-height:1.25;color:var(--navy);margin-bottom:20px;letter-spacing:-.01em}
+
+    .author-block{margin-bottom:28px}
+    .author-name{font-size:16px;font-weight:600;color:var(--text)}
+    .affil{font-size:13.5px;color:var(--muted);margin-top:2px}
+    .affil a{color:var(--blue);text-decoration:none}
+
+    .stats{display:flex;border:1px solid var(--border);border-radius:8px;
+           overflow:hidden;margin-bottom:32px}
+    .stat{flex:1;text-align:center;padding:16px 10px;
+          border-right:1px solid var(--border);background:var(--bg-alt)}
+    .stat:last-child{border-right:none}
+    .stat-value{font-family:var(--serif);font-size:24px;font-weight:700;
+                color:var(--navy);line-height:1;display:block}
+    .stat-label{font-size:10.5px;color:var(--muted);text-transform:uppercase;
+                letter-spacing:.07em;margin-top:5px;display:block}
+
+    .btn-row{display:flex;gap:12px;margin-bottom:36px;flex-wrap:wrap}
+    .btn{display:inline-flex;align-items:center;gap:7px;text-decoration:none;
+         font-size:14px;font-weight:600;padding:10px 22px;border-radius:6px;
+         transition:opacity .15s,transform .1s;white-space:nowrap}
+    .btn:hover{opacity:.88;transform:translateY(-1px)}
+    .btn-primary{background:var(--navy);color:#fff}
+    .btn-accent{background:var(--blue);color:#fff}
+    .btn-ghost{background:transparent;color:var(--navy);border:1.5px solid var(--border)}
+
+    .section-label{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;
+                   text-transform:uppercase;color:var(--blue);font-weight:700;
+                   margin-bottom:10px}
+
+    .abstract-box{background:var(--blue-lt);border-left:3px solid var(--blue);
+                  border-radius:0 6px 6px 0;padding:22px 26px;margin-bottom:36px}
+    .abstract-box p{font-family:var(--serif);font-size:15.5px;
+                    line-height:1.75;color:var(--text)}
+
+    .callout{background:var(--amber-lt);border-left:3px solid #D97706;
+             border-radius:0 6px 6px 0;padding:16px 20px;margin-bottom:32px}
+    .callout p{font-family:var(--serif);font-size:15px;color:var(--amber)}
+    .callout strong{color:#78350F}
+
+    .scope-note{background:var(--bg-alt);border:1px solid var(--border);
+                border-radius:6px;padding:14px 18px;margin-bottom:32px;font-size:13.5px;
+                color:var(--muted)}
+    .scope-note strong{color:var(--text)}
+    .scope-note code{font-family:var(--mono);font-size:12.5px}
+
+    hr{border:none;border-top:1px solid var(--border);margin:32px 0}
+
+    .figures{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:36px}
+    .fig-card{border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--bg-alt)}
+    .fig-card img{width:100%;height:auto;display:block;background:#fff}
+    .fig-cap{font-size:12px;color:var(--muted);padding:8px 12px;
+             border-top:1px solid var(--border);font-family:var(--mono)}
+    .fig-full{grid-column:1/-1}
+
+    .table-wrap{overflow-x:auto;margin-bottom:14px}
+    .results-table{width:100%;border-collapse:collapse;font-size:14px}
+    .results-table th{background:var(--navy);color:#fff;padding:10px 12px;
+                      text-align:left;font-weight:600;font-family:var(--mono);
+                      font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+    .results-table td{padding:9px 12px;border-bottom:1px solid var(--border)}
+    .results-table tr:last-child td{border-bottom:none}
+    .results-table tr:nth-child(even) td{background:var(--bg-alt)}
+    .results-table .best{font-weight:700;color:var(--navy)}
+    .table-note{font-size:13px;color:var(--muted);margin-bottom:32px}
+
+    .finding-list{list-style:none;margin-bottom:32px}
+    .finding-list li{padding:12px 0 12px 18px;border-left:2px solid var(--border);
+                     margin-bottom:10px;font-size:14.5px}
+    .finding-list li strong{color:var(--navy);font-family:var(--serif);font-size:15.5px}
+    .finding-list li span{display:block;color:var(--muted);font-size:13.5px;margin-top:3px}
+
+    .keywords{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:32px}
+    .kw{font-size:12.5px;padding:4px 11px;border:1px solid var(--border);
+        border-radius:99px;color:var(--muted);background:var(--bg-alt)}
+
+    .bibtex-wrap{background:var(--code-bg);border-radius:8px;overflow:hidden;margin-bottom:36px}
+    .bibtex-bar{display:flex;justify-content:space-between;align-items:center;
+                padding:10px 16px;background:#1F2937}
+    .bibtex-bar span{font-family:var(--mono);font-size:11px;color:#9CA3AF;
+                     letter-spacing:.06em;text-transform:uppercase}
+    .copy-btn{font-family:var(--mono);font-size:11px;background:#374151;
+              color:#D1D5DB;border:none;padding:4px 12px;border-radius:4px;
+              cursor:pointer;transition:background .15s}
+    .copy-btn:hover{background:#4B5563}
+    pre.bibtex{font-family:var(--mono);font-size:12.5px;color:var(--code-txt);
+               line-height:1.7;padding:20px 20px 24px;overflow-x:auto}
+
+    .links-row{display:flex;gap:14px;flex-wrap:wrap}
+    .link-card{display:flex;align-items:center;gap:10px;text-decoration:none;
+               color:var(--text);font-size:14px;font-weight:500;padding:12px 18px;
+               border:1px solid var(--border);border-radius:8px;background:var(--bg-alt);
+               transition:border-color .15s,background .15s}
+    .link-card:hover{border-color:var(--blue);background:var(--blue-lt)}
+
+    footer{margin-top:60px;padding-top:20px;border-top:1px solid var(--border);
+           font-size:12.5px;color:var(--muted);font-family:var(--mono)}
+
+    @media(max-width:560px){
+      .page{padding:0 16px 64px}
+      .stats{flex-direction:column}
+      .stat{border-right:none;border-bottom:1px solid var(--border)}
+      .stat:last-child{border-bottom:none}
+      .figures{grid-template-columns:1fr}
+      .btn-row{flex-direction:column}
+      .btn{justify-content:center}
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Backscatter trace dropping below the water threshold, signature element -->
+  <div class="trace-header" aria-hidden="true">
+    <svg viewBox="0 0 740 56" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+      <line x1="0" y1="38" x2="740" y2="38" stroke="#2563EB" stroke-width="1"
+            stroke-dasharray="4,4" opacity="0.35"/>
+      <path d="M0,16 L18,21 L34,13 L52,19 L70,11 L88,18 L104,14 L122,22 L140,12
+               L158,17 L176,15 L194,20 L212,12 L230,18 L248,14 L266,21 L284,13
+               L302,19 L320,15 L338,24 L352,44 L366,49 L380,45 L394,50 L408,46
+               L422,48 L436,43 L450,26 L468,17 L486,21 L504,12 L522,18 L540,15
+               L558,20 L576,13 L594,19 L612,14 L630,22 L648,12 L666,18 L684,15
+               L702,20 L720,13 L740,17"
+            fill="none" stroke="#1A3A5C" stroke-width="1.4" stroke-linejoin="round" opacity="0.6"/>
+      <path d="M346,38 L352,44 L366,49 L380,45 L394,50 L408,46 L422,48 L436,43 L441,38"
+            fill="none" stroke="#2563EB" stroke-width="2.4" stroke-linejoin="round" opacity="0.8"/>
+    </svg>
+  </div>
+
+  <div class="badge-row">
+    <span class="badge">Preprint</span>
+    <span class="badge sar">Sentinel-1 SAR</span>
+    <span class="badge ind">Independent Research</span>
+    <span class="pub-date">October 2026</span>
+  </div>
+
+  <h1>How Well Do Globally Trained Sentinel-1 Flood Mapping Methods Transfer to
+      Kenya? An Evaluation Against UNOSAT Rapid Mapping of the 2024 Long-Rains
+      Floods</h1>
+
+  <div class="author-block">
+    <div class="author-name">Craig Carlos Ouma</div>
+    <div class="affil">Independent Researcher &nbsp;&middot;&nbsp;
+      <a href="mailto:craigcarlos95@gmail.com">craigcarlos95@gmail.com</a>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <span class="stat-value">0.347</span>
+      <span class="stat-label">Riverine IoU, U-Net</span>
+    </div>
+    <div class="stat">
+      <span class="stat-value">0.160</span>
+      <span class="stat-label">Best Classical Method</span>
+    </div>
+    <div class="stat">
+      <span class="stat-value">1 in 4</span>
+      <span class="stat-label">Nairobi Flooding Found, U-Net</span>
+    </div>
+    <div class="stat">
+      <span class="stat-value">2.7&times;</span>
+      <span class="stat-label">IoU Swing from Timing</span>
+    </div>
+  </div>
+
+  <div class="scope-note">
+    <strong>Scope note.</strong> The reference is UNOSAT's rapid mapping of
+    activation FL20240426KEN, drawn from Sentinel-2 and Pléiades imagery and
+    described by UNOSAT as preliminary and not field-validated. It is treated
+    as an independent reference, not ground truth. No Kenyan or UNOSAT data
+    were used to train any model. Full reasoning for every choice is in the
+    repository's <code>DECISIONS.md</code>. This is independent research and
+    is not produced, reviewed, commissioned, or endorsed by UNOSAT, UNITAR,
+    ESA, the Copernicus programme, NDMA, the Kenya Space Agency, or the Kenya
+    Red Cross.
+  </div>
+
+  <div class="callout">
+    <p><strong>Key finding:</strong> A U-Net trained only on Sen1Floods11,
+    which contains no Kenyan data, agrees with UNOSAT's flood maps along the
+    Tana about twice as well as the best threshold or change-detection rule
+    (IoU 0.347 against 0.160), and its flooded area matches UNOSAT's to within
+    about 1% on two references. The same model finds only 3 to 14% of the
+    buildings UNOSAT counted as affected, because its masks stay out of
+    settlements, while a simple change-detection rule comes within the range
+    expected from building data alone. In Nairobi, methods that keep their
+    false alarms in check find about a quarter of the mapped flooding.</p>
+  </div>
+
+  <div class="btn-row">
+    <a class="btn btn-primary" href="paper/kenya_floods_sar.pdf" target="_blank" rel="noopener">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+           stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="7 10 12 15 17 10"/>
+        <line x1="12" y1="15" x2="12" y2="3"/>
+      </svg>
+      Download PDF
+    </a>
+    <a class="btn btn-accent"
+       href="https://github.com/craigouma/kenya-floods-sar-2024/blob/main/notebook/kenya_floods_sar.ipynb"
+       target="_blank" rel="noopener">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+           stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="2"/>
+        <line x1="3" y1="9" x2="21" y2="9"/>
+        <line x1="9" y1="21" x2="9" y2="9"/>
+      </svg>
+      Notebook
+    </a>
+    <a class="btn btn-ghost" href="https://github.com/craigouma/kenya-floods-sar-2024" target="_blank" rel="noopener">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 .5C5.37.5 0 5.87 0 12.5c0 5.3 3.44 9.8 8.21 11.38.6.11.82-.26.82-.58
+                 0-.28-.01-1.02-.01-2-3.34.73-4.04-1.61-4.04-1.61-.54-1.38-1.33-1.75-1.33-1.75
+                 -1.09-.74.08-.73.08-.73 1.2.08 1.84 1.24 1.84 1.24 1.07 1.83 2.8 1.3 3.49 1
+                 .11-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22
+                 -.13-.3-.54-1.52.12-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 3-.4c1.02.01
+                 2.04.14 3 .4 2.28-1.55 3.29-1.23 3.29-1.23.66 1.66.25 2.88.12 3.18.77.84
+                 1.24 1.91 1.24 3.22 0 4.61-2.81 5.63-5.48 5.92.43.37.81 1.1.81 2.22 0 1.6
+                 -.01 2.9-.01 3.29 0 .32.21.7.82.58A12 12 0 0 0 24 12.5C24 5.87 18.63.5 12 .5z"/>
+      </svg>
+      Code &amp; Data
+    </a>
+  </div>
+
+  <div class="section-label">Abstract</div>
+  <div class="abstract-box">
+    <p>Kenya's March to May 2024 long rains brought flooding along the Tana River
+    and across Nairobi and its neighbouring counties, and UNOSAT mapped it from
+    optical satellite imagery, which cloud blocks during the rains. This paper
+    measures how well Sentinel-1 radar flood mapping methods developed elsewhere
+    transfer to these Kenyan landscapes, using UNOSAT's maps as an independent
+    reference. Nine methods were compared, from Otsu thresholds and change
+    detection to U-Nets trained on Sen1Floods11, with no Kenyan data used in
+    training. In riverine settings, at Garissa and along 8,785 km² of the Tana
+    and Galana rivers, the main U-Net agreed with UNOSAT at an IoU of 0.347
+    (95% interval 0.331 to 0.364), against 0.160 for the best classical
+    method, and its flooded area was within about 1% of UNOSAT's on two
+    references. In the urban analysis of Nairobi, Kiambu and Machakos every
+    method's interval overlapped, and built-up land was where all nine failed.
+    Timing mattered as much as method: at Garissa the U-Net scored 0.215
+    against a reference three days after the radar pass and 0.581 against one
+    nine days before it, because the river was still rising. The best extent
+    model placed only 3 to 14% of UNOSAT's affected buildings inside its masks,
+    so extent and exposure call for different products. Applied to every pass
+    from April to June, the U-Net shows flood water on the middle Tana peaking
+    at 535 km² on 20 May and near the delta about four weeks later.</p>
+  </div>
+
+  <hr>
+
+  <div class="section-label">Agreement with UNOSAT, by setting</div>
+  <div class="table-wrap">
+    <table class="results-table">
+      <thead>
+        <tr><th>Method</th><th>Riverine IoU</th><th>Urban IoU</th><th>Buildings found, Garissa 5 May</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Otsu threshold, VH</td><td>0.116</td><td class="best">0.192</td><td>0.10&times;</td></tr>
+        <tr><td>Change detection, &minus;3&nbsp;dB, VV</td><td>0.160</td><td>0.151</td><td>0.76&times;</td></tr>
+        <tr><td>Change detection, &minus;3&nbsp;dB, VH</td><td>0.155</td><td>0.165</td><td class="best">1.01&times;</td></tr>
+        <tr><td class="best">U-Net, Sen1Floods11 hand + weak labels</td><td class="best">0.347</td><td>0.221</td><td>0.14&times;</td></tr>
+        <tr><td>U-Net, pre- and post-event, hand labels</td><td>0.277</td><td class="best">0.228</td><td>0.25&times;</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="table-note">
+    IoU for the flood class, pooled within each group. Riverine: Garissa on two
+    reference dates and 70 tiles along the Tana and Galana rivers; urban: the
+    Nairobi, Kiambu and Machakos analysis of 1 May 2024. In the urban column
+    every method's 95% interval overlaps the others'. Buildings found is the
+    number of Open Buildings centroids in the flood mask divided by UNOSAT's
+    structure count; with UNOSAT's own flood extent the ratio is 1.26, so
+    building data alone shift it by about 30%.
+  </p>
+
+  <div class="section-label">What the evaluation shows</div>
+  <ul class="finding-list">
+    <li><strong>A public model transfers to Kenyan floodplains</strong>
+      <span>The Sen1Floods11 U-Net scores 0.424 all-water IoU on the
+      benchmark's own test chips, in line with the published 0.408, and agrees
+      with UNOSAT at Garissa on 5 May at an IoU of 0.544.</span></li>
+    <li><strong>Built-up land defeats every method</strong>
+      <span>F1 for the flood class on built-up land is below 0.11 for all nine
+      methods in both settings. Cropland and herbaceous wetland are where the
+      methods work best.</span></li>
+    <li><strong>The day gap matters more than the method</strong>
+      <span>At Garissa the U-Net's map from a radar pass three days before the
+      29 April optical image agrees at an IoU of 0.22, and from a pass nine days
+      after it at 0.58: the Tana was still rising. In Nairobi, passes five days
+      either side of the reference find almost nothing.</span></li>
+    <li><strong>Extent and exposure need different products</strong>
+      <span>The method that maps flood extent best misses most flooded
+      buildings, and the one that counts buildings best maps extent poorly.</span></li>
+  </ul>
+
+  <div class="section-label">Key figures</div>
+  <div class="figures">
+    <div class="fig-card fig-full">
+      <img src="paper/fig_panels_garissa.png" alt="Garissa pre and post event radar, UNOSAT flood water, U-Net flood water and agreement map">
+      <div class="fig-cap">Garissa and Mororo, 5 May 2024: radar, UNOSAT reference, U-Net, and agreement</div>
+    </div>
+    <div class="fig-card fig-full">
+      <img src="paper/fig_iou_by_method.png" alt="IoU by method for riverine and urban groups with intervals">
+      <div class="fig-cap">IoU by method and setting, with 1 km block bootstrap intervals</div>
+    </div>
+    <div class="fig-card">
+      <img src="paper/fig_aoi_map.png" alt="Map of Kenya with the evaluation areas">
+      <div class="fig-cap">Evaluation areas and the Tana and Galana corridor</div>
+    </div>
+    <div class="fig-card">
+      <img src="paper/fig_day_gap.png" alt="IoU against days between radar and optical images">
+      <div class="fig-cap">Agreement against the radar-to-reference day gap</div>
+    </div>
+    <div class="fig-card fig-full">
+      <img src="paper/fig_f1_landcover.png" alt="F1 by land cover class and method">
+      <div class="fig-cap">F1 by land cover: built-up land is where every method fails</div>
+    </div>
+    <div class="fig-card fig-full">
+      <img src="paper/fig_exposure.png" alt="Buildings in flood masks against UNOSAT counts">
+      <div class="fig-cap">Buildings inside each flood mask against UNOSAT's structure counts</div>
+    </div>
+    <div class="fig-card fig-full">
+      <img src="paper/fig_tana_series.png" alt="Lower Tana flood water by county through April to June 2024">
+      <div class="fig-cap">Lower Tana flood water by county, April to June 2024</div>
+    </div>
+  </div>
+
+  <hr>
+
+  <div class="section-label">Data</div>
+  <div class="table-wrap">
+    <table class="results-table">
+      <thead>
+        <tr><th>Source</th><th>Role</th><th>Resolution</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>UNOSAT FL20240426KEN, via HDX</td><td>Reference flood water</td><td>Pléiades, Sentinel-2</td></tr>
+        <tr><td>Sentinel-1 GRD, Planetary Computer</td><td>SAR input, VV and VH</td><td>10 m</td></tr>
+        <tr><td>Sen1Floods11 v1.1</td><td>Training data</td><td>10 m chips</td></tr>
+        <tr><td>JRC Global Surface Water</td><td>Permanent water</td><td>30 m</td></tr>
+        <tr><td>ESA WorldCover 2021</td><td>Land cover</td><td>10 m</td></tr>
+        <tr><td>Copernicus DEM GLO-30, GLO-30 HAND</td><td>Terrain correction, HAND</td><td>30 m</td></tr>
+        <tr><td>Google Open Buildings v3</td><td>Exposure</td><td>Building points</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="table-note">
+    Every input is public and needed no account. Flood rasters and tables
+    produced here are released under CC BY 4.0; UNOSAT's data and their
+    rasterised versions remain under CC BY-SA.
+  </p>
+
+  <hr>
+
+  <div class="section-label">Keywords</div>
+  <div class="keywords">
+    <span class="kw">Sentinel-1</span>
+    <span class="kw">SAR flood mapping</span>
+    <span class="kw">Sen1Floods11</span>
+    <span class="kw">U-Net</span>
+    <span class="kw">Change detection</span>
+    <span class="kw">UNOSAT rapid mapping</span>
+    <span class="kw">Urban flooding</span>
+    <span class="kw">Tana River</span>
+    <span class="kw">Kenya</span>
+  </div>
+
+  <hr>
+
+  <div class="section-label">Cite this work</div>
+  <div class="bibtex-wrap">
+    <div class="bibtex-bar">
+      <span>BibTeX</span>
+      <button class="copy-btn" onclick="copyBib(this)">Copy</button>
+    </div>
+    <pre class="bibtex" id="bibtex-block">@misc{ouma2026kenyafloods,
+  title   = {How Well Do Globally Trained {Sentinel-1} Flood Mapping
+             Methods Transfer to {Kenya}? An Evaluation Against
+             {UNOSAT} Rapid Mapping of the 2024 Long-Rains Floods},
+  author  = {Ouma, Craig Carlos},
+  year    = {2026},
+  month   = {October},
+  note    = {Preprint},
+  url     = {https://craigouma.github.io/kenya-floods-sar-2024/}
+}</pre>
+  </div>
+
+  <div class="section-label">Links</div>
+  <div class="links-row">
+    <a class="link-card" href="https://github.com/craigouma/kenya-floods-sar-2024" target="_blank" rel="noopener">GitHub</a>
+    <a class="link-card" href="https://craigouma.github.io/eo-drought-food-security-kenya/" target="_blank" rel="noopener">EO Drought and Food Security</a>
+    <a class="link-card" href="https://craigouma.github.io/child-nutrition-shap/" target="_blank" rel="noopener">Child Nutrition SHAP</a>
+    <a class="link-card" href="https://craigouma.github.io/neonatal-paper/" target="_blank" rel="noopener">Neonatal Early Warning</a>
+    <a class="link-card" href="https://craigouma.github.io/ptbxl-ecg-paper/" target="_blank" rel="noopener">ECG Classification</a>
+    <a class="link-card" href="https://craigouma.github.io/credit-default/" target="_blank" rel="noopener">Credit Default SHAP</a>
+  </div>
+
+  <footer>
+    Craig Carlos Ouma &nbsp;&middot;&nbsp; Independent Researcher &nbsp;&middot;&nbsp; 2026
+    &nbsp;&middot;&nbsp; Data: UNOSAT FL20240426KEN (CC BY-SA), Copernicus Sentinel-1 via
+    Microsoft Planetary Computer, Sen1Floods11, JRC Global Surface Water, ESA WorldCover,
+    Copernicus DEM, Google Open Buildings &nbsp;&middot;&nbsp; Not affiliated with,
+    commissioned by, or endorsed by UNOSAT, UNITAR, ESA, the Copernicus programme, NDMA,
+    the Kenya Space Agency, or the Kenya Red Cross
+  </footer>
+
+</div>
+
+<script>
+  function copyBib(btn) {
+    navigator.clipboard.writeText(
+      document.getElementById('bibtex-block').textContent
+    ).then(() => {
+      btn.textContent = 'Copied';
+      setTimeout(() => btn.textContent = 'Copy', 2000);
+    });
+  }
+</script>
+</body>
+</html>

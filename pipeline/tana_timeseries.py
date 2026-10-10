@@ -5,8 +5,8 @@ corridor tiles in Garissa and Tana River counties, plus the Garissa extent.
 There is no reference for most of this area; the riverine accuracy from the
 evaluation is its expected error. Each relative orbit images a different part
 of the corridor, so areas are reported per orbit with the observed area
-alongside, and are only comparable within an orbit. Mapping is at 20 m by
-default to keep the April to June run to a few hours; the evaluation is at 10 m.
+alongside, and are only comparable within an orbit. Classical methods can be
+mapped at 20 m to save time; the U-Nets run at the 10 m they were trained on.
 """
 
 import argparse
@@ -50,7 +50,7 @@ def county_raster(grid) -> np.ndarray:
                      transform=grid.transform, fill=0, dtype="uint8")
 
 
-def flood_mask(method: str, post: dict, pre: dict) -> np.ndarray:
+def flood_mask(method: str, post: dict, pre: dict, valid: np.ndarray | None = None) -> np.ndarray:
     pol = method.rsplit("_", 1)[-1]
     if method.startswith("change_fixed"):
         return classical.change_fixed(post[pol], pre[pol])
@@ -62,7 +62,7 @@ def flood_mask(method: str, post: dict, pre: dict) -> np.ndarray:
     model = UNet(channels)
     model.load_state_dict(torch.load(MODELS / f"{weights}.pt", map_location="cpu"))
     bands = [post["vv"], post["vh"]] + ([pre["vv"], pre["vh"]] if channels == 4 else [])
-    return predict(model, np.stack(bands)) > 0.5
+    return predict(model, np.stack(bands), valid=valid) > 0.5
 
 
 def coarse(grid: s1_grd.Grid, factor: int) -> s1_grd.Grid:
@@ -82,6 +82,7 @@ def pre_event(aoi: str, orbit: int, pass_id: str, grid, height) -> dict:
 def run_tile(aoi: str, method: str, factor: int) -> list[dict]:
     """All passes over one tile. At factor 2 the tile is mapped at 20 m, with
     ancillary layers subsampled from the 10 m stack."""
+    torch.set_num_threads(2)
     cat = catalog()
     full = grid_of(aoi)
     anc = {k: v[: full.height // factor * factor : factor, : full.width // factor * factor : factor]
@@ -98,14 +99,20 @@ def run_tile(aoi: str, method: str, factor: int) -> list[dict]:
             pres[p.orbit] = max(cands, key=lambda q: (round(q.cover, 2), q.date)) if cands else None
         if pres[p.orbit] is None:
             continue
-        pre = pre_event(aoi, p.orbit, pres[p.orbit].id, grid, anc["ellipsoid_height"])
-        post = s1_grd.sigma0_pass(p.items, grid, anc["ellipsoid_height"])
-        valid = keep & np.isfinite(post["vv"]) & np.isfinite(pre["vv"])
-        mask = flood_mask(method, post, pre) & valid
-        with rasterio.open(OUT / f"{p.date:%Y%m%d}_o{p.orbit}_{aoi}.tif", "w", driver="GTiff", height=grid.height,
-                           width=grid.width, count=1, dtype="uint8", crs=UTM, transform=grid.transform, nodata=255,
-                           compress="deflate", tiled=True) as dst:
-            dst.write(np.where(valid, mask, 255).astype("uint8"), 1)
+        out = OUT / f"{p.date:%Y%m%d}_o{p.orbit}_{aoi}.tif"
+        if out.exists():
+            with rasterio.open(out) as src:
+                written = src.read(1)
+            valid, mask = written != 255, written == 1
+        else:
+            pre = pre_event(aoi, p.orbit, pres[p.orbit].id, grid, anc["ellipsoid_height"])
+            post = s1_grd.sigma0_pass(p.items, grid, anc["ellipsoid_height"])
+            valid = keep & np.isfinite(post["vv"]) & np.isfinite(pre["vv"])
+            mask = flood_mask(method, post, pre, valid) & valid
+            with rasterio.open(out, "w", driver="GTiff", height=grid.height, width=grid.width, count=1,
+                               dtype="uint8", crs=UTM, transform=grid.transform, nodata=255,
+                               compress="deflate", tiled=True) as dst:
+                dst.write(np.where(valid, mask, 255).astype("uint8"), 1)
         for code, name in COUNTY_NAMES.items():
             inside = county == code
             rows.append({"date": p.date.date().isoformat(), "orbit": p.orbit, "aoi": aoi, "county": name,
@@ -114,7 +121,10 @@ def run_tile(aoi: str, method: str, factor: int) -> list[dict]:
     return rows
 
 
-def build(method: str, factor: int = 2, workers: int = 4) -> pd.DataFrame:
+def build(method: str, factor: int | None = None, workers: int = 2) -> pd.DataFrame:
+    factor = factor or (1 if method.startswith("unet") else 2)
+    if method.startswith("unet") and factor != 1:
+        raise ValueError("the U-Nets were trained on 10 m chips; run them with factor 1")
     OUT.mkdir(parents=True, exist_ok=True)
     with ProcessPoolExecutor(workers) as pool:
         parts = pool.map(run_tile, region_aois(), repeat(method), repeat(factor))
@@ -130,7 +140,7 @@ def build(method: str, factor: int = 2, workers: int = 4) -> pd.DataFrame:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--method", required=True)
-    ap.add_argument("--factor", type=int, default=2)
+    ap.add_argument("--factor", type=int)
     args = ap.parse_args()
     print(build(args.method, args.factor).round(1).to_string(index=False))
 

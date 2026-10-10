@@ -187,6 +187,8 @@ def main() -> None:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     root = args.data
     results = {}
+    if any(r.startswith("pre") for r in args.runs) and not (args.pre_dir and any(args.pre_dir.glob("*_S1PreHand.tif"))):
+        raise SystemExit("pre-event runs need --pre-dir pointing at the S1PreHand chips")
     for run in args.runs:
         pre_dir = args.pre_dir if run.startswith("pre") else None
         # The pre-event run and its post-only control use only chips that have

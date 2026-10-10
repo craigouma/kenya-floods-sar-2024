@@ -16,9 +16,9 @@
 \titleformat{\section}{\normalfont\Large\bfseries\color{navy}}{\thesection}{1em}{}
 \titleformat{\subsection}{\normalfont\large\bfseries\color{accent}}{\thesubsection}{1em}{}
 
-\title{\textbf{How Well Do Globally Trained Sentinel-1 Flood Mapping Methods\\
-Transfer to Kenya? An Evaluation Against UNOSAT Rapid Mapping\\
-of the 2024 Long-Rains Floods}}
+\title{\textbf{How Well Do Globally Trained Sentinel-1 Flood Mapping Methods
+Transfer to Kenya? An Evaluation Against UNOSAT Rapid Mapping of the 2024
+Long-Rains Floods}}
 
 \author[1]{Craig Carlos Ouma\thanks{%
 Correspondence: \texttt{craigcarlos95@gmail.com}. Code and data:
@@ -31,7 +31,33 @@ Correspondence: \texttt{craigcarlos95@gmail.com}. Code and data:
 
 \begin{abstract}
 \noindent
-RESULTS-PENDING
+Kenya's March to May 2024 long rains brought flooding along the Tana River
+and across Nairobi and its neighbouring counties, and UNOSAT mapped it from
+optical satellite imagery, which cloud blocks during the rains. This paper
+measures how well Sentinel-1 radar flood mapping methods developed elsewhere
+transfer to these Kenyan landscapes, using UNOSAT's maps as an independent
+reference. Sentinel-1 scenes were processed to $\sigma^0$ in a way that
+reproduces the Sen1Floods11 training data to within 0.04\,dB, and nine
+methods were compared: Otsu thresholds and log-ratio change detection, and
+U-Nets trained on Sen1Floods11, one of them with a dry-season image as extra
+input. No Kenyan data were used in training. The main U-Net matched published
+Sen1Floods11 results (all-water IoU 0.424 against 0.408). In riverine and rural
+settings, at Garissa and along 8,785\,km$^2$ of the Tana and Galana rivers, it
+agreed with UNOSAT at an IoU of 0.347 (95\,\% block bootstrap interval 0.331 to
+0.364), against 0.160 for the best classical method, and its flooded area was
+within about 1\,\% of UNOSAT's on two references. In the urban analysis of
+Nairobi, Kiambu and Machakos every method's interval overlapped, the U-Net
+reaching 0.221 and finding about a quarter of the mapped flood water. Built-up
+land was where every method failed, with flood-class F1 below 0.11 for all
+nine. Timing mattered as much as method: at Garissa the U-Net scored 0.215
+against a reference three days after the radar pass and 0.581 against one
+nine days before it, because the river was still rising. The best extent
+model also placed only 3 to 14\,\% of UNOSAT's affected buildings inside its
+masks, while a fixed change-detection rule came within the spread expected
+from building data alone, so extent and exposure call for different products.
+Applied to every pass from April to June, the U-Net shows flood water on the
+middle Tana peaking at 535\,km$^2$ on 20 May and near the delta about four
+weeks later.
 \end{abstract}
 
 \section{Introduction}
@@ -41,8 +67,8 @@ The March to May 2024 long rains were near or above average over most of
 Kenya, and at several Nairobi stations, at Thika and at Machakos they were the
 wettest season on record \cite{kmd2024}. Flooding followed along the Tana River
 in Garissa and Tana River counties and across Nairobi and the neighbouring
-counties of Kiambu and Machakos, and landslides struck Mai Mahiu and Kijabe
-in Nakuru and Kiambu \cite{unosat2024}. By 18 June the National Disaster Operations Centre counted
+counties of Kiambu and Machakos, and landslides struck the towns of Mai Mahiu
+and Kijabe \cite{unosat2024}. By 18 June the National Disaster Operations Centre counted
 315 people killed, 188 injured and 38 missing, and more than 293,200 people
 displaced since 1 March \cite{ocha2024fu7}.
 
@@ -51,9 +77,8 @@ event under code FL20240426KEN and published flood extents for Garissa and
 the village of Mororo opposite it, for the Tana and Galana rivers, and for the
 built-up area spanning Nairobi, Kiambu and Machakos \cite{unosat2024}. Those
 maps were drawn from optical imagery, from Sentinel-2 and from very high
-resolution Pléiades scenes, because optical imagery is what a human analyst
-can interpret quickly. Optical sensors cannot see through cloud, and the long
-rains are, by definition, the cloudiest part of the year. In the six days
+resolution Pléiades scenes. Optical sensors cannot see through cloud, and
+cloud cover persists through the long rains. In the six days
 either side of UNOSAT's reference dates, the three Sentinel-2 acquisitions over
 Nairobi were 52\,\%, 89\,\% and 92\,\% cloud covered and the three over
 Garissa 80\,\%, 36\,\% and 100\,\%, as reported for the whole 110\,km tile.
@@ -65,10 +90,9 @@ single track every 12 days through 2024. Open water is dark in SAR because it
 reflects the radar pulse away from the sensor, and this contrast is the basis
 of every SAR flood mapping method.
 
-The methods available off the shelf were developed or trained elsewhere.
-Thresholding methods were tuned on European and South Asian floods, and the
-most widely used labelled dataset for training deep learning models on
-Sentinel-1, Sen1Floods11 \cite{bonafilia2020}, spans eleven flood events in
+The methods available off the shelf were developed or trained elsewhere. A
+widely used labelled dataset for training deep learning models on Sentinel-1,
+Sen1Floods11 \cite{bonafilia2020}, spans eleven hand-labelled flood events in
 eleven countries, three of them African. Whether these methods hold up on
 Kenyan landscapes, where semi-arid floodplains, cropland, informal
 settlements and dense urban fabric each scatter radar differently, has not
@@ -166,7 +190,17 @@ from the same image, clipped to the Garissa extent; this gives 27.9\,km$^2$
 against the 26\,km$^2$ UNOSAT reports. The Tana and Galana product covers
 70,874\,km$^2$ and has no product page of its own. The national NOAA-VIIRS
 composite (375\,m pixels), the Mai Mahiu landslide product and three cropland
-subsets of the urban analysis are not used.
+subsets of the urban analysis are not used. Figure~\ref{fig:map} locates the
+areas used.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.62\textwidth]{fig_aoi_map.png}
+\caption{Areas evaluated: the UNOSAT analysis extents at Garissa and in the
+Nairobi, Kiambu and Machakos area, and the 70 tiles of the Tana and Galana
+corridor, over Kenya's county boundaries.}
+\label{fig:map}
+\end{figure}
 
 \begin{table}[h]
 \centering
@@ -174,13 +208,17 @@ subsets of the urban analysis are not used.
 \caption{Reference analyses used. Day gap is the Sentinel-1 date minus the
 reference image date for the pass used in the headline results.}
 \label{tab:aois}
+\resizebox{\textwidth}{!}{%
 \begin{tabular}{llllrr}
 \toprule
 AOI & Group & Reference image & Sentinel-1 pass & Day gap & Flood water (km$^2$) \\
 \midrule
-RESULTS-PENDING-AOITABLE
+Garissa, 29 April & Riverine & Sentinel-2, 29 Apr & 26 Apr & $-3$ & 27.9 \\
+Garissa, 5 May & Riverine & Pléiades, 5 May & 8 May & $+3$ & 21.7 \\
+Tana and Galana, 70 tiles & Riverine & Sentinel-2, 29 Apr & 26 Apr, 1 May & $-3$, $+2$ & 361.0 \\
+Nairobi, Kiambu, Machakos & Urban & Pléiades, 1 May & 1 May & 0 & 59.7 \\
 \bottomrule
-\end{tabular}
+\end{tabular}}
 \end{table}
 
 These maps are an independent reference, not ground truth. Each product
@@ -222,13 +260,15 @@ For each AOI the post-event pass is the one closest in time to the reference
 image, and the pre-event pass is the latest January or February 2024
 acquisition from the same relative orbit. A pass is all slices of one
 datatake that image the AOI, mosaicked. Garissa is covered by a single track
-(relative orbit 159, ascending) and the Nairobi area by one other (relative
-orbit 57, ascending).
+(relative orbit 159, ascending) and the Nairobi area by two (relative orbits
+57 and 130, both ascending); the headline Nairobi pass is on orbit 57, on the
+day of the reference.
 
 \subsection{Training data}
 
 Sen1Floods11 v1.1 \cite{bonafilia2020} was downloaded from its public bucket.
-Three of its eleven events are African: Ghana (53 hand-labelled chips),
+It holds eleven hand-labelled events and a twelfth, in Colombia, with weak
+labels only. Three of the eleven are African: Ghana (53 hand-labelled chips),
 Nigeria (18) and Somalia (26). Somalia, the Juba and Shabelle floods of May
 2018, is the only East African event, so the transfer to Kenya is out of
 region for most of the training data but not all of it. No Kenyan data, and
@@ -274,7 +314,8 @@ and weight decay $10^{-2}$, and cosine annealing with warm restarts. Inputs
 are scaled exactly as in the reference code. The Bolivia event is held out
 entirely, including the weakly labelled Bolivia chips that the public bucket
 contains, and the checkpoint with the best mean per-chip IoU on the
-validation split is kept. RESULTS-PENDING-EPOCHS
+validation split is kept. Training ran for 150 epochs on a single Kaggle T4
+GPU.
 
 Sen1Floods11 has no pre-event imagery. To test whether a model that sees the
 dry-season image does better, pre-event chips were built for the
@@ -329,36 +370,425 @@ the flood extent.
 \section{Results: Sen1Floods11 test performance}
 \label{sec:s1f}
 
-RESULTS-PENDING
+Table~\ref{tab:s1f} scores every method on the Sen1Floods11 test split and on
+the held-out Bolivia event, with the original paper's convention (the mean of
+per-chip IoUs) and with IoU pooled over all pixels. The U-Net trained on
+hand-labelled and Sentinel-2-derived weak labels reaches a mean per-chip IoU
+of 0.424 for all water and 0.358 for flood water on the test split, and 0.446
+and 0.392 on Bolivia. The original paper's best model, trained on the same
+labels, reported 0.408 and 0.339 on the test split and 0.316 and 0.274 on
+Bolivia \cite{bonafilia2020}. The model is therefore in line with, and
+slightly above, the published range, and its Kenyan results can be read as
+those of a competent Sen1Floods11 model. Its best validation score came at
+epoch 121 of 150.
+
+Otsu thresholding of VH, fitted on heterogeneous tiles of each chip, scores
+0.224 for flood water on the test split and 0.387 on Bolivia, against 0.285
+and 0.324 reported for the original per-event threshold. Change detection,
+which can only be scored on the 86 test and 9 Bolivia chips that have a
+pre-event image, scores between 0.10 and 0.12 on the test split. The
+pre-event images were drawn from one to five months before events that mostly
+occurred within long wet seasons, and many are probably not dry; the same
+method has a dry-season reference in Kenya.
+
+On the paired chips, giving the U-Net the pre-event image changes flood-water
+IoU from 0.332 to 0.337 on the test split, within noise, and from 0.322 to
+0.410 on Bolivia, the one event no model saw in training.
+
+\begin{table}[h]
+\centering
+\small
+\caption{Sen1Floods11 results, flood water. Mean is the mean of per-chip IoUs
+(the original paper's convention); pooled is IoU over all pixels. Paired rows
+use only chips with a pre-event image (86 test, 9 Bolivia).}
+\label{tab:s1f}
+\begin{tabular}{lrrrr}
+\toprule
+& \multicolumn{2}{c}{Test} & \multicolumn{2}{c}{Bolivia} \\
+Method & Mean & Pooled & Mean & Pooled \\
+\midrule
+Bonafilia et al.\ (2020), Otsu VH & 0.285 & & 0.324 & \\
+Bonafilia et al.\ (2020), S2 weak labels & 0.339 & & 0.274 & \\
+\midrule
+Otsu, VH & 0.224 & 0.194 & 0.387 & 0.503 \\
+U-Net, post, hand and weak labels & 0.358 & 0.570 & 0.392 & 0.680 \\
+\midrule
+\multicolumn{5}{l}{\textit{Paired chips}} \\
+Change, $-3$\,dB, VV & 0.118 & 0.235 & 0.222 & 0.398 \\
+U-Net, post, hand labels only & 0.332 & 0.516 & 0.322 & 0.500 \\
+U-Net, pre and post, hand labels only & 0.337 & 0.514 & 0.410 & 0.618 \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \section{Results: transfer to Kenya}
 \label{sec:kenya}
 
-RESULTS-PENDING
+\subsection{Riverine and urban agreement}
+
+Table~\ref{tab:groups} gives agreement with UNOSAT pooled within each group,
+and Figure~\ref{fig:iou} plots it. In riverine and rural settings the U-Net
+trained on hand-labelled and weak labels agrees best with the reference, with
+an IoU of 0.347 (95\,\% interval 0.331 to 0.364), roughly double the best
+classical method, change detection on VV at a fixed $-3$\,dB (0.160, 0.150
+to 0.172). The intervals do not overlap. Single-image Otsu thresholds and
+Otsu-fitted change detection do worst, with precision between 0.07 and 0.15:
+they label as water far more than UNOSAT mapped.
+
+In the urban and peri-urban analysis the ordering compresses. The three U-Nets
+score between 0.217 and 0.228 and the best classical method, Otsu on VH,
+0.192 (0.161 to 0.225); the intervals overlap, and no method can be said to be
+better than the others. The U-Nets' precision there is 0.62 to 0.65 and their
+recall about 0.26: what they label as water in Nairobi is usually water in the
+reference, but they find about a quarter of the flood water UNOSAT mapped.
+Methods that reach higher recall do so by labelling large parts of the city as
+water; Otsu on VV finds 82\,\% of the reference at a precision of 0.16. The automatic thresholds also break down in the
+city: Otsu's threshold on VV falls at $-7.6$\,dB, within the range of ordinary
+dry land: the brightest mode of the urban histogram is buildings, and the
+fitted threshold falls between buildings and everything else. The change-detection fits land
+at $-0.65$\,dB for VV and $+0.22$\,dB for VH, where the 0\,dB cap applies,
+so almost any darkening counts as flooding.
+
+\begin{table}[h]
+\centering
+\small
+\caption{Agreement with UNOSAT flood water, pooled within each group, with
+95\,\% intervals from a 1\,km block bootstrap. P is precision and R recall.
+Riverine and rural: Garissa (two references) and 70 Tana and Galana corridor
+tiles. Urban and peri-urban: the Nairobi, Kiambu and Machakos analysis.}
+\label{tab:groups}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lrrrrrr}
+\toprule
+& \multicolumn{3}{c}{Riverine and rural} & \multicolumn{3}{c}{Urban and peri-urban} \\
+Method & IoU (95\,\% CI) & P & R & IoU (95\,\% CI) & P & R \\
+\midrule
+Otsu, VV & 0.082 (0.077--0.088) & 0.10 & 0.35 & 0.158 (0.137--0.180) & 0.16 & 0.82 \\
+Otsu, VH & 0.116 (0.109--0.125) & 0.15 & 0.34 & 0.192 (0.161--0.225) & 0.41 & 0.27 \\
+Change, Otsu, VV & 0.064 (0.061--0.069) & 0.07 & 0.41 & 0.175 (0.145--0.206) & 0.31 & 0.29 \\
+Change, Otsu, VH & 0.064 (0.060--0.069) & 0.07 & 0.43 & 0.164 (0.140--0.189) & 0.23 & 0.37 \\
+Change, $-3$\,dB, VV & 0.160 (0.150--0.172) & 0.27 & 0.28 & 0.151 (0.115--0.189) & 0.62 & 0.17 \\
+Change, $-3$\,dB, VH & 0.155 (0.144--0.168) & 0.21 & 0.37 & 0.165 (0.130--0.202) & 0.57 & 0.19 \\
+U-Net, post & 0.347 (0.331--0.364) & 0.53 & 0.50 & 0.221 (0.171--0.273) & 0.62 & 0.26 \\
+U-Net, post, hand labels only & 0.212 (0.200--0.225) & 0.29 & 0.45 & 0.217 (0.167--0.269) & 0.62 & 0.25 \\
+U-Net, pre and post, hand labels only & 0.277 (0.262--0.293) & 0.39 & 0.49 & 0.228 (0.175--0.282) & 0.65 & 0.26 \\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{fig_iou_by_method.png}
+\caption{IoU for the flood class by method and group, with 95\,\% intervals
+from resampling 1\,km blocks.}
+\label{fig:iou}
+\end{figure}
+
+\subsection{Individual areas}
+
+The pooled riverine figure is dominated by the Tana and Galana corridor, which
+holds 360 of the 410\,km$^2$ of riverine reference flood water. Within it the
+U-Net's IoU is 0.344 and change detection's 0.147. Change detection's errors
+there are mostly commission in shrubland, grassland and tree cover away from
+the channels: patches that darkened between February and late April but that
+UNOSAT did not map as flood water. They may be rain-filled pans and
+depressions on the semi-arid plain, flooding under vegetation that an optical
+image cannot see, or false alarms, and the data here cannot separate the
+three. The U-Net's flooded area over the corridor, 356\,km$^2$, is within
+about 1\,\% of the reference's 360\,km$^2$.
+
+At Garissa the two references give very different pictures. Against the
+Pléiades map of 5 May, matched by a radar pass three days later, the U-Net
+reaches an IoU of 0.544 with precision and recall both near 0.70, and its
+flooded area, 21.5\,km$^2$, is within about 1\,\% of the reference's 21.7\,km$^2$.
+Change detection on VV reaches 0.487. Against the Sentinel-2 map of 29 April,
+matched by a pass three days earlier, every method falls to between 0.10 and
+0.22, with recall below 0.25. Figure~\ref{fig:panels} shows the 5 May case.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{fig_panels_garissa.png}
+\caption{Garissa and Mororo, reference of 5 May 2024. From left: pre-event VH
+(26 February), post-event VH (8 May), UNOSAT flood water, the U-Net's flood
+water, and agreement (blue), omission (amber) and commission (grey).}
+\label{fig:panels}
+\end{figure}
+
+\subsection{Sensitivity to the day gap}
+
+The Garissa contrast is a timing effect, which scoring every Sentinel-1 pass
+within 24 days of each reference shows directly (Figure~\ref{fig:daygap}).
+Against the 29 April reference, change detection on VV scores 0.163 with the
+26 April pass and 0.443 with the 8 May pass, nine days after the reference.
+Against the 5 May reference it scores 0.487 with the pass three days later and
+0.174 with the pass nine days earlier. The radar mapped 7.3\,km$^2$ of flood
+water on 26 April and 16.7 to 18.1\,km$^2$ on 8 May: the Tana was still
+rising at Garissa in late April, and the 29 April optical image caught a
+larger flood than the radar three days before it. Passes 15 or more days from
+either reference score below 0.07 with change detection. The U-Net follows
+the same pattern at a higher level: 0.215 with the 26 April pass and 0.581
+with the 8 May pass against the 29 April reference, and 0.544 with the pass
+three days after the 5 May reference. In Nairobi, which two tracks cover,
+agreement exists only on the day of the reference: 0.221 for the U-Net and
+0.151 for change detection on 1 May, against 0.006 to 0.035 for every pass
+between 5 and 24 days away on either side. Urban flood water had drained
+within five days. Otsu on VH keeps an IoU near 0.13 on some distant passes
+because it labels water that is unrelated to the flood.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{fig_day_gap.png}
+\caption{IoU against the number of days between the Sentinel-1 pass and the
+reference image, for every pass within 24 days of each reference.}
+\label{fig:daygap}
+\end{figure}
+
+\subsection{Land cover}
+
+Figure~\ref{fig:landcover} breaks agreement down by ESA WorldCover class.
+Built-up land is the class where every method fails, in both groups: F1 for
+the flood class is below 0.11 for all nine methods. UNOSAT itself mapped
+little flood water on land WorldCover classes as built-up (0.7\,km$^2$ in the
+riverine AOIs and 2.7\,km$^2$ in the urban one, against 30.5\,km$^2$ on
+grassland in the urban analysis, mostly along river corridors), so these
+scores rest on small areas, but the failure is uniform. The best class is
+cropland for the U-Nets (F1 0.68 riverine, 0.54 urban) and herbaceous wetland
+for the classical methods in riverine settings (0.53 to 0.60). For the U-Net,
+riverine shrubland is the weakest vegetated class (F1 0.21).
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{fig_f1_landcover.png}
+\caption{F1 for the flood class by ESA WorldCover class and method. Labels
+under each class give the reference flood water it contains.}
+\label{fig:landcover}
+\end{figure}
+
+\subsection{HAND mask}
+
+Setting to dry every pixel more than 20\,m above the nearest drainage changes
+IoU by at most 0.008 for any method in either group. Along the lower Tana and
+in Nairobi's river valleys nearly all flood water, and nearly all false
+alarms, lie within 20\,m of drainage, so the mask has little to remove.
 
 \section{Exposure estimates against UNOSAT counts}
 \label{sec:exposure}
 
-RESULTS-PENDING
+UNOSAT counted 3,440 potentially affected buildings at Garissa and Mororo on
+29 April, 3,377 on 5 May, and 13,111 affected structures across the urban
+analysis on 1 May, of which 12,985 fall inside the evaluation domain here
+\cite{unosat2024}. Those counts were digitised by analysts on very high
+resolution imagery. Table~\ref{tab:exposure} sets against them the number of
+Google Open Buildings v3 centroids \cite{sirko2021} inside each method's flood
+mask, and inside UNOSAT's own flood extent. The first row separates the two
+sources of disagreement: even with UNOSAT's flood extent, Open Buildings gives
+0.72, 1.26 and 0.67 times UNOSAT's counts, so differences of about 30\,\% in
+either direction come from the building data alone, and agreement closer than
+that should not be expected.
+
+\begin{table}[h]
+\centering
+\small
+\caption{Buildings in flood masks: Open Buildings v3 centroids (confidence at
+least 0.70) inside each mask and the evaluation domain, with the ratio to
+UNOSAT's structure count in brackets. UNOSAT counts in the domain: 3,440 (Garissa, 29 April), 3,377 (Garissa, 5 May) and 12,985 (urban).}
+\label{tab:exposure}
+\begin{tabular}{lrrr}
+\toprule
+Mask & Garissa, 29 Apr & Garissa, 5 May & Nairobi area, 1 May \\
+\midrule
+Open Buildings in UNOSAT flood extent & 2,481 (0.72) & 4,241 (1.26) & 8,736 (0.67) \\
+U-Net, post & 116 (0.03) & 488 (0.14) & 757 (0.06) \\
+U-Net, pre and post & 145 (0.04) & 852 (0.25) & 886 (0.07) \\
+Change, $-3$\,dB, VV & 1,379 (0.40) & 2,557 (0.76) & 7,246 (0.56) \\
+Change, $-3$\,dB, VH & 1,919 (0.56) & 3,417 (1.01) & 10,166 (0.78) \\
+Otsu, VH & 797 (0.23) & 327 (0.10) & 1,484 (0.11) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The method that maps flood extent best is among the worst at finding flooded
+buildings. The U-Net trained on hand-labelled and weak labels puts 116, 488
+and 757 buildings in its masks, between 0.03 and 0.14 times UNOSAT's counts.
+Its masks follow open floodplain and almost never enter settlements, which is
+consistent with its F1 of 0.05 to 0.06 on built-up land and with a training set
+that contains no urban floods. Change detection with a fixed $-3$\,dB threshold
+on VH comes closest to UNOSAT's counts, at 0.56, 1.01 and 0.78 times. It does
+so with low pixel-level agreement in Nairobi (IoU 0.165), so the closeness of
+its count is partly a matter of commission and omission cancelling; it
+nevertheless shows that backscatter decreases in and around Kenyan
+settlements carry information about flooded buildings that the U-Net
+discards. In the urban analysis, Otsu on VV and Otsu-fitted change detection,
+whose thresholds fail there (Section~\ref{sec:kenya}), overcount by factors
+of 4.7 to 9.6, while Otsu on VH undercounts at 0.11 (Figure~\ref{fig:exposure}).
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{fig_exposure.png}
+\caption{Open Buildings centroids inside each method's flood mask divided by
+UNOSAT's structure count, on a logarithmic scale. The dashed line is equality;
+the shaded band spans the ratios obtained with UNOSAT's own flood extent,
+the disagreement that comes from the building data alone.}
+\label{fig:exposure}
+\end{figure}
 
 \section{Lower Tana flood time series}
 \label{sec:tana}
 
-RESULTS-PENDING
+The U-Net trained on hand-labelled and weak labels, the best method in
+riverine settings, was applied to every Sentinel-1 pass between 1 April and
+30 June 2024 over the 38 corridor tiles in Garissa and Tana River counties
+and the Garissa extent, 273 tile passes in all. Two tracks cover this region.
+Relative orbit 159 images 5,755\,km$^2$ of the corridor in Tana River County
+and 1,682\,km$^2$ in Garissa County every 12 days; relative orbit 57 images
+205\,km$^2$ of the lower river near the delta. The 1 June acquisition on orbit
+159 and the 13 May acquisition on orbit 57 are not in the archive. Flood water
+is reported per county and per orbit (Figure~\ref{fig:tana}), and areas are
+comparable only within an orbit, since each images a different part of the
+river. There is no reference for most of this area, so these are estimates
+with the riverine accuracy of Section~\ref{sec:kenya} attached: an IoU of
+0.352 against the 29 April reference on the 37 corridor tiles the series
+covers, with flooded area within about 1\,\% of the
+reference on the 29 April Tana product and on the 5 May Garissa map.
+
+On the middle Tana (orbit 159), water in Tana River County rose from
+236\,km$^2$ on 2 April to 330\,km$^2$ on 26 April and 482\,km$^2$ on 8 May,
+peaked at 535\,km$^2$ on 20 May, and fell to 343\,km$^2$ by 25 June. The
+2 April figure includes the river channel itself, which JRC records as water
+less than 80\,\% of the time and which the permanent-water rule therefore
+keeps, together with any early-season flooding; the rise from that baseline is
+the signal. Near the delta (orbit 57) water kept rising after the middle
+river had peaked, from 19\,km$^2$ on 7 April and 63\,km$^2$ on 1 May to
+122\,km$^2$ on 18 June, before falling to 96\,km$^2$ on 30 June. The lower
+river peaked about four weeks after the middle river, as expected for a flood
+wave moving downstream through a long, flat floodplain. On 18 June, OCHA
+reported 46 displacement camps in Tana River County hosting 34,205 people, the
+most of any county, against three sites hosting about 4,140 people in Garissa
+County \cite{ocha2024fu7}.
+
+The Garissa County side of the corridor carried far less water, 8 to
+14\,km$^2$ throughout, because the floodplain at Garissa lies mostly on the
+Tana River County bank, where Mororo is. The U-Net also underestimated
+flooding at Garissa on 26 April, when the river was still rising
+(Section~\ref{sec:kenya}), and its masks avoid built-up land
+(Section~\ref{sec:exposure}), so flooding in Garissa town is likely
+understated in this series.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{fig_tana_series.png}
+\caption{Flood water mapped by the U-Net along the lower Tana corridor in
+Garissa and Tana River counties for every Sentinel-1 pass from April to June
+2024, by relative orbit. Labels give the area each orbit observes in each
+county.}
+\label{fig:tana}
+\end{figure}
 
 \section{Implications for flood monitoring in Kenya}
 \label{sec:implications}
 
-RESULTS-PENDING
+The first implication is that a model trained on Sen1Floods11 transfers to
+Kenyan floodplains well enough to use, and better than the classical methods
+that are easier to deploy. Along the lower Tana it agreed with an independent
+optical reference about twice as well as the best threshold or change rule,
+its total flooded area was within about 1\,\% of UNOSAT's on two references, and its
+agreement on the one reference matched in time and resolution (IoU 0.544 at
+Garissa on 5 May) is comparable to its score on Sen1Floods11's own test
+chips. The training set contains one East African event among eleven, so this
+is mostly out-of-region transfer, and it held. A Kenyan monitoring system that
+receives Sentinel-1 scenes every 12 days could produce cloud-independent flood
+extent along the Tana and its peers with a public model and public data,
+which is what Section~\ref{sec:tana} does for April to June 2024.
+
+The second is that the same model should not be used to count affected
+people or buildings. Its masks avoid settlements, so building exposure
+computed from them would understate impact by an order of magnitude in both
+Garissa and Nairobi. Change detection with a fixed threshold, despite its
+lower pixel agreement, came within the range expected from the building data
+alone. A practical system would use one product for extent and another, or
+explicit treatment of built-up areas, for exposure; a single headline
+accuracy figure would hide this.
+
+The third is that radar alone does not resolve urban flooding in Nairobi.
+The methods that keep false alarms in check, the U-Net among them, find
+about a quarter of the flood water UNOSAT mapped from Pléiades on the same day,
+and none is clearly better than the others. Urban flooding in Nairobi and its neighbours is short-lived and
+concentrated along narrow river corridors and among buildings, where
+backscatter brightens instead of darkening. Interferometric coherence and
+urban elevation models \cite{mason2021} are the established ways forward,
+and the Sen1Floods11 training data contain no urban events from which a
+model could learn the urban signature.
+
+The fourth concerns the reference itself. At Garissa, the three days between
+the radar and the optical image while the river was rising changed agreement
+more than the choice of method did. Rapid mapping
+products are made from whichever image is available first, and an evaluation
+that ignores the acquisition dates would have attributed a timing effect to
+the method. Any routine comparison between SAR products and rapid mapping in
+Kenya should report the day gap, and during a rising flood a pass a few days
+after the optical image can be a better match than one a few days before it.
 
 \section{Limitations}
 \label{sec:limitations}
 
-RESULTS-PENDING
+The reference maps are preliminary rapid analyses, not field-validated
+ground truth, and they were made from optical imagery by analysts working
+quickly. They can miss water under canopy and shallow water that looks like
+wet soil, and the Tana and Galana analysis in particular was mapped at
+10\,m over 70,874\,km$^2$. Part of every method's disagreement with them is
+the reference's error, which this design cannot separate from the method's.
+
+The radar and optical images were acquired on different days, by three days
+at Garissa, two to three days along the Tana and on the same day only in
+Nairobi. Section~\ref{sec:kenya} shows that three days during a rising flood
+are enough to change IoU by a factor of almost three.
+
+There are few independent analyses. The riverine group rests on two reference
+dates at Garissa and one Sentinel-2 product along the Tana and Galana, and
+the urban group on a single Pléiades analysis. The 70 corridor tiles are not
+70 independent tests: they share one reference image and, for 57 of them, one
+radar pass. The block bootstrap accounts for spatial correlation within these
+analyses but not for the small number of analyses.
+
+The corridor was defined from JRC water rather than from the reference, but
+it still restricts the Tana evaluation to land within 5\,km of persistent
+water. Flooding farther from the rivers, and false alarms there, are not
+scored.
+
+SAR physics limits what any backscatter method can see in towns, and none of
+the methods here uses coherence. The urban result describes backscatter
+methods; coherence-based methods were not tested.
+
+The U-Net was trained with the original paper's labels and schedule but a
+different architecture, and on one seed; its Kenyan scores would vary
+somewhat between training runs. The pre-event U-Net and its control were
+trained on about 240 chips, eighteen times fewer than the main model, so the
+comparison between them is informative but neither is a competitive model on
+its own.
+
+Building counts use Open Buildings v3 centroids above a single confidence
+threshold, while UNOSAT counted structures on its own imagery. The comparison
+is approximate by construction, and the row computed with UNOSAT's own flood
+extent shows how approximate.
+
+No result here was validated in the field.
 
 \section*{Reproducibility statement}
 
-RESULTS-PENDING
+Every input is public and was obtained without an account: UNOSAT products
+from the Humanitarian Data Exchange, Sentinel-1 GRD scenes, the Copernicus
+DEM, JRC Global Surface Water and ESA WorldCover from Microsoft Planetary
+Computer, Sen1Floods11 from its public bucket, GLO-30 HAND from ASF on Amazon
+Web Services, and Google Open Buildings v3 from its public bucket. The code,
+the notebook that regenerates every number and figure, the trained U-Net
+weights, the Kaggle kernels that trained them, the rasterised references,
+every method's flood mask for every AOI, and the lower Tana flood rasters are
+at \url{https://github.com/craigouma/kenya-floods-sar-2024} under the MIT
+licence for code and CC BY 4.0 for derived data, with UNOSAT's data and their
+derivatives under CC BY-SA. Every choice the analysis plan left open is
+recorded, with its reason, in the repository's \texttt{DECISIONS.md}. This is
+independent research; it was not produced, reviewed, commissioned or endorsed
+by UNOSAT, UNITAR, ESA, the Copernicus programme or any Kenyan agency.
 
 \begin{thebibliography}{99}
 

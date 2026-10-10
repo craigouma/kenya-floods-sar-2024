@@ -22,7 +22,7 @@ code = Path(glob.glob("/kaggle/input/**/train_unet.py", recursive=True)[0]).pare
 work = Path("/kaggle/working")
 for f in ("unet.py", "train_unet.py"):
     shutil.copy(code / f, work / f)
-pre = glob.glob("/kaggle/input/**/S1PreHand", recursive=True)
+pre = sorted({str(Path(p).parent) for p in glob.glob("/kaggle/input/**/*_S1PreHand.tif", recursive=True)})
 args = [sys.executable, "train_unet.py", "--data", "/tmp/sen1floods11", "--out", str(work / "models"), "--runs", *RUNS]
 if pre:
     args += ["--pre-dir", pre[0]]

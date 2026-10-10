@@ -30,10 +30,15 @@ def passes(cat, geom, ref_date: pd.Timestamp) -> list[tuple[str, str, int]]:
     return out
 
 
-def main() -> None:
+def main(force: bool = False) -> None:
+    out = OUTPUTS / "day_gap_sensitivity.csv"
+    if out.exists() and not force:
+        print(f"using {out.name}; pass force=True to recompute")
+        return
     cat = catalog()
     rows = []
-    for a in load_aois().to_crs("EPSG:4326").itertuples():
+    aois = load_aois()
+    for a in aois[~aois["aoi"].str.startswith("tana_")].to_crs("EPSG:4326").itertuples():
         ref_date = pd.Timestamp(a.reference_date)
         for post_id, pre_id, orbit in passes(cat, a.geometry, ref_date):
             s = stack(a.aoi, post_id, pre_id)
@@ -49,7 +54,7 @@ def main() -> None:
                              "pred_km2": c[[0, 1]].sum() / 1e4, "ref_km2": c[[0, 2]].sum() / 1e4})
             print(a.aoi, gap, orbit, flush=True)
     df = pd.DataFrame(rows).sort_values(["aoi", "method", "day_gap"])
-    df.to_csv(OUTPUTS / "day_gap_sensitivity.csv", index=False)
+    df.to_csv(out, index=False)
     best = df[df["method"].isin(["change_fixed_vv", "change_otsu_vv", "otsu_vh"])]
     print(best.pivot_table(index=["aoi", "day_gap"], columns="method", values="iou").round(3).to_string())
 

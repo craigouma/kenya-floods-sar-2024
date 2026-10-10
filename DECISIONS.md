@@ -182,3 +182,54 @@ gives 46 displacement camps in Tana River County hosting 34,205 people and
 three sites in Garissa County hosting about 4,140 people on 18 June. Its
 highlights say "more than 306,520" people affected and its overview "nearly
 306,520"; the number is quoted without either qualifier.
+
+## Training runs
+
+**Main U-Net.** 150 epochs on a Kaggle T4 (`kaggle/unet_main`), about 95 s per
+epoch over 4,412 chips (252 hand-labelled plus 4,160 weakly labelled after the
+Bolivia exclusion). The best validation checkpoint came at epoch 121. On the
+test split it scores 0.424 all-water and 0.358 flood-water mean per-chip IoU,
+against the original paper's 0.408 and 0.339 for the same labels
+(`models/sen1floods11_results.json`), so the brief's sanity check passed
+before the model was applied to Kenya.
+
+**Pre-event U-Net.** The first run of `kaggle/unet_pre` trained both models
+with two input channels: Kaggle unpacks dataset files at the dataset root, the
+kernel looked for an `S1PreHand` folder, found none, and the training script
+fell back to post-event inputs without complaint. Those results were
+discarded. The kernel now locates the chips by file name and the training
+script refuses to run a pre-event model without them. The second run used 240
+paired training chips, 84 validation, 86 test and 9 Bolivia chips.
+
+**Classical methods on Sen1Floods11** (`pipeline/classical_sen1floods11.py`)
+use exactly the Kenya implementation, including the 1 km tile size (25 tiles
+per 512 pixel chip). Change detection is scored on paired chips only.
+
+## Evaluation scope
+
+**Sensitivity.** The day-gap analysis covers the three point AOIs. The corridor
+tiles share one reference image and one or two passes, and adding them would
+repeat the same comparison 70 times. Nairobi turned out to be covered by two
+tracks (relative orbits 57 and 130), so its sensitivity curve has passes 5 and
+7 days from the reference as well as 12 and 24.
+
+## Lower Tana time series
+
+**Method.** The U-Net trained on hand-labelled and weak labels was the best
+riverine method (IoU 0.347 against 0.160 for the best classical method, with
+non-overlapping intervals), so it maps the series. It runs at 10 m, the
+resolution it was trained on; the 20 m option in `tana_timeseries.py` is for
+classical methods only and the script refuses U-Nets at any other resolution.
+
+**Region.** The brief asks for the full lower Tana basin in Garissa and Tana
+River counties. The series covers the 38 corridor tiles that intersect those
+two counties plus the Garissa extent, rather than both counties entire
+(82,751 km² in the COD-AB boundaries): the U-Net was only evaluated along the corridor, its error
+there is what the series inherits, and processing both counties at 10 m for
+every pass was not practical on this machine. Flooding away from the rivers
+is not counted.
+
+**Robustness.** Long runs met transient network failures and, more often,
+403 responses once the SAS tokens attached at search time expired. Reads are
+now re-signed with a fresh token and retried, and the series resumes from
+tile-passes already written.
