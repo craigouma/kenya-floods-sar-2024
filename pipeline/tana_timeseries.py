@@ -50,7 +50,7 @@ def county_raster(grid) -> np.ndarray:
                      transform=grid.transform, fill=0, dtype="uint8")
 
 
-def flood_mask(method: str, post: dict, pre: dict) -> np.ndarray:
+def flood_mask(method: str, post: dict, pre: dict, valid: np.ndarray | None = None) -> np.ndarray:
     pol = method.rsplit("_", 1)[-1]
     if method.startswith("change_fixed"):
         return classical.change_fixed(post[pol], pre[pol])
@@ -62,7 +62,7 @@ def flood_mask(method: str, post: dict, pre: dict) -> np.ndarray:
     model = UNet(channels)
     model.load_state_dict(torch.load(MODELS / f"{weights}.pt", map_location="cpu"))
     bands = [post["vv"], post["vh"]] + ([pre["vv"], pre["vh"]] if channels == 4 else [])
-    return predict(model, np.stack(bands)) > 0.5
+    return predict(model, np.stack(bands), valid=valid) > 0.5
 
 
 def coarse(grid: s1_grd.Grid, factor: int) -> s1_grd.Grid:
@@ -102,7 +102,7 @@ def run_tile(aoi: str, method: str, factor: int) -> list[dict]:
         pre = pre_event(aoi, p.orbit, pres[p.orbit].id, grid, anc["ellipsoid_height"])
         post = s1_grd.sigma0_pass(p.items, grid, anc["ellipsoid_height"])
         valid = keep & np.isfinite(post["vv"]) & np.isfinite(pre["vv"])
-        mask = flood_mask(method, post, pre) & valid
+        mask = flood_mask(method, post, pre, valid) & valid
         with rasterio.open(OUT / f"{p.date:%Y%m%d}_o{p.orbit}_{aoi}.tif", "w", driver="GTiff", height=grid.height,
                            width=grid.width, count=1, dtype="uint8", crs=UTM, transform=grid.transform, nodata=255,
                            compress="deflate", tiled=True) as dst:
