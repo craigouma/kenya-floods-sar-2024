@@ -178,7 +178,10 @@ reference image date for the pass used in the headline results.}
 \toprule
 AOI & Group & Reference image & Sentinel-1 pass & Day gap & Flood water (km$^2$) \\
 \midrule
-RESULTS-PENDING-AOITABLE
+Garissa, 29 April & Riverine & Sentinel-2, 29 Apr & 26 Apr & $-3$ & 27.9 \\
+Garissa, 5 May & Riverine & Pléiades, 5 May & 8 May & $+3$ & 21.7 \\
+Tana and Galana, 70 tiles & Riverine & Sentinel-2, 29 Apr & 26 Apr, 1 May & $-3$, $+2$ & 361.0 \\
+Nairobi, Kiambu, Machakos & Urban & Pléiades, 1 May & 1 May & 0 & 59.7 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -274,7 +277,8 @@ and weight decay $10^{-2}$, and cosine annealing with warm restarts. Inputs
 are scaled exactly as in the reference code. The Bolivia event is held out
 entirely, including the weakly labelled Bolivia chips that the public bucket
 contains, and the checkpoint with the best mean per-chip IoU on the
-validation split is kept. RESULTS-PENDING-EPOCHS
+validation split is kept. Training ran for 150 epochs on a single Kaggle T4
+GPU.
 
 Sen1Floods11 has no pre-event imagery. To test whether a model that sees the
 dry-season image does better, pre-event chips were built for the
@@ -329,12 +333,195 @@ the flood extent.
 \section{Results: Sen1Floods11 test performance}
 \label{sec:s1f}
 
-RESULTS-PENDING
+Table~\ref{tab:s1f} scores every method on the Sen1Floods11 test split and on
+the held-out Bolivia event, with the original paper's convention (the mean of
+per-chip IoUs) and with IoU pooled over all pixels. The U-Net trained on
+hand-labelled and Sentinel-2-derived weak labels reaches a mean per-chip IoU
+of 0.424 for all water and 0.358 for flood water on the test split, and 0.446
+and 0.392 on Bolivia. The original paper's best model, trained on the same
+labels, reported 0.408 and 0.339 on the test split and 0.316 and 0.274 on
+Bolivia \cite{bonafilia2020}. The model is therefore in line with, and
+slightly above, the published range, and its Kenyan results can be read as
+those of a competent Sen1Floods11 model. Its best validation score came at
+epoch 121 of 150.
+
+Otsu thresholding of VH, fitted on heterogeneous tiles of each chip, scores
+0.224 for flood water on the test split and 0.387 on Bolivia, against 0.285
+and 0.324 reported for the original per-event threshold. Change detection,
+which can only be scored on the 86 test and 9 Bolivia chips that have a
+pre-event image, scores between 0.10 and 0.12 on the test split. The
+pre-event images were drawn from one to five months before events that mostly
+occurred within long wet seasons, and many are probably not dry; the same
+method has a dry-season reference in Kenya.
+
+On the paired chips, giving the U-Net the pre-event image changes flood-water
+IoU from 0.332 to 0.337 on the test split, within noise, and from 0.322 to
+0.410 on Bolivia, the one event no model saw in training.
+
+\begin{table}[h]
+\centering
+\small
+\caption{Sen1Floods11 results, flood water. Mean is the mean of per-chip IoUs
+(the original paper's convention); pooled is IoU over all pixels. Paired rows
+use only chips with a pre-event image (86 test, 9 Bolivia).}
+\label{tab:s1f}
+\begin{tabular}{lrrrr}
+\toprule
+& \multicolumn{2}{c}{Test} & \multicolumn{2}{c}{Bolivia} \\
+Method & Mean & Pooled & Mean & Pooled \\
+\midrule
+Bonafilia et al.\ (2020), Otsu VH & 0.285 & & 0.324 & \\
+Bonafilia et al.\ (2020), S2 weak labels & 0.339 & & 0.274 & \\
+\midrule
+Otsu, VH & 0.224 & 0.194 & 0.387 & 0.503 \\
+U-Net, post, hand and weak labels & 0.358 & 0.570 & 0.392 & 0.680 \\
+\midrule
+\multicolumn{5}{l}{\textit{Paired chips}} \\
+Change, $-3$\,dB, VV & 0.118 & 0.235 & 0.222 & 0.398 \\
+U-Net, post, hand labels only & 0.332 & 0.516 & 0.322 & 0.500 \\
+U-Net, pre and post, hand labels only & 0.337 & 0.514 & 0.410 & 0.618 \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \section{Results: transfer to Kenya}
 \label{sec:kenya}
 
-RESULTS-PENDING
+\subsection{Riverine and urban agreement}
+
+Table~\ref{tab:groups} gives agreement with UNOSAT pooled within each group,
+and Figure~\ref{fig:iou} plots it. In riverine and rural settings the U-Net
+trained on hand-labelled and weak labels agrees best with the reference, with
+an IoU of 0.347 (95\,\% interval 0.331 to 0.364), roughly double the best
+classical method, change detection on VV at a fixed $-3$\,dB (0.160, 0.150
+to 0.172). The intervals do not overlap. Single-image Otsu thresholds and
+Otsu-fitted change detection do worst, with precision between 0.07 and 0.15:
+they label as water far more than UNOSAT mapped.
+
+In the urban and peri-urban analysis the ordering compresses. The three U-Nets
+score between 0.217 and 0.228 and the best classical method, Otsu on VH,
+0.192 (0.161 to 0.225); the intervals overlap, and no method can be said to be
+better than the others. Every method's precision there is moderate (0.62 to
+0.65 for the U-Nets) and its recall low (about 0.26): what SAR labels as water
+in Nairobi is usually water in the reference, but it finds about a quarter of
+the flood water UNOSAT mapped.
+
+\begin{table}[h]
+\centering
+\small
+\caption{Agreement with UNOSAT flood water, pooled within each group, with
+95\,\% intervals from a 1\,km block bootstrap. P is precision and R recall.
+Riverine and rural: Garissa (two references) and 70 Tana and Galana corridor
+tiles. Urban and peri-urban: the Nairobi, Kiambu and Machakos analysis.}
+\label{tab:groups}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lrrrrrr}
+\toprule
+& \multicolumn{3}{c}{Riverine and rural} & \multicolumn{3}{c}{Urban and peri-urban} \\
+Method & IoU (95\,\% CI) & P & R & IoU (95\,\% CI) & P & R \\
+\midrule
+Otsu, VV & 0.082 (0.077--0.088) & 0.10 & 0.35 & 0.158 (0.137--0.180) & 0.16 & 0.82 \\
+Otsu, VH & 0.116 (0.109--0.125) & 0.15 & 0.34 & 0.192 (0.161--0.225) & 0.41 & 0.27 \\
+Change, Otsu, VV & 0.064 (0.061--0.069) & 0.07 & 0.41 & 0.175 (0.145--0.206) & 0.31 & 0.29 \\
+Change, Otsu, VH & 0.064 (0.060--0.069) & 0.07 & 0.43 & 0.164 (0.140--0.189) & 0.23 & 0.37 \\
+Change, $-3$\,dB, VV & 0.160 (0.150--0.172) & 0.27 & 0.28 & 0.151 (0.115--0.189) & 0.62 & 0.17 \\
+Change, $-3$\,dB, VH & 0.155 (0.144--0.168) & 0.21 & 0.37 & 0.165 (0.130--0.202) & 0.57 & 0.19 \\
+U-Net, post & 0.347 (0.331--0.364) & 0.53 & 0.50 & 0.221 (0.171--0.273) & 0.62 & 0.26 \\
+U-Net, post, hand labels only & 0.212 (0.200--0.225) & 0.29 & 0.45 & 0.217 (0.167--0.269) & 0.62 & 0.25 \\
+U-Net, pre and post, hand labels only & 0.277 (0.262--0.293) & 0.39 & 0.49 & 0.228 (0.175--0.282) & 0.65 & 0.26 \\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{fig_iou_by_method.png}
+\caption{IoU for the flood class by method and group, with 95\,\% intervals
+from resampling 1\,km blocks.}
+\label{fig:iou}
+\end{figure}
+
+\subsection{Individual areas}
+
+The pooled riverine figure is dominated by the Tana and Galana corridor, which
+holds 360 of the 410\,km$^2$ of riverine reference flood water. Within it the
+U-Net's IoU is 0.344 and change detection's 0.147. Change detection's errors
+there are mostly commission in shrubland, grassland and tree cover away from
+the channels: patches that darkened between February and late April but that
+UNOSAT did not map as flood water. They may be rain-filled pans and
+depressions on the semi-arid plain, flooding under vegetation that an optical
+image cannot see, or false alarms, and the data here cannot separate the
+three. The U-Net's flooded area over the corridor, 356\,km$^2$, is within
+1\,\% of the reference's 360\,km$^2$.
+
+At Garissa the two references give very different pictures. Against the
+Pléiades map of 5 May, matched by a radar pass three days later, the U-Net
+reaches an IoU of 0.544 with precision and recall both near 0.70, and its
+flooded area, 21.5\,km$^2$, is within 1\,\% of the reference's 21.7\,km$^2$.
+Change detection on VV reaches 0.487. Against the Sentinel-2 map of 29 April,
+matched by a pass three days earlier, every method falls to between 0.10 and
+0.22, with recall below 0.25. Figure~\ref{fig:panels} shows the 5 May case.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{fig_panels_garissa.png}
+\caption{Garissa and Mororo, reference of 5 May 2024. From left: pre-event VH
+(26 February), post-event VH (8 May), UNOSAT flood water, the U-Net's flood
+water, and agreement (blue), omission (amber) and commission (grey).}
+\label{fig:panels}
+\end{figure}
+
+\subsection{Sensitivity to the day gap}
+
+The Garissa contrast is a timing effect, which scoring every Sentinel-1 pass
+within 24 days of each reference shows directly (Figure~\ref{fig:daygap}).
+Against the 29 April reference, change detection on VV scores 0.163 with the
+26 April pass and 0.443 with the 8 May pass, nine days after the reference.
+Against the 5 May reference it scores 0.487 with the pass three days later and
+0.174 with the pass nine days earlier. The radar mapped 7.3\,km$^2$ of flood
+water on 26 April and 16.7 to 18.1\,km$^2$ on 8 May: the Tana was still
+rising at Garissa in late April, and the 29 April optical image caught a
+larger flood than the radar three days before it. Passes 15 or more days from
+either reference score below 0.07. In Nairobi, agreement exists only on the
+day of the reference, 0.151 for change detection, against 0.009 to 0.025 for
+passes 12 to 24 days away, as expected for short-lived urban flooding.
+SENS-UNET
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{fig_day_gap.png}
+\caption{IoU against the number of days between the Sentinel-1 pass and the
+reference image, for every pass within 24 days of each reference.}
+\label{fig:daygap}
+\end{figure}
+
+\subsection{Land cover}
+
+Figure~\ref{fig:landcover} breaks agreement down by ESA WorldCover class.
+Built-up land is the class where every method fails, in both groups: F1 for
+the flood class is below 0.11 for all nine methods. UNOSAT itself mapped
+little flood water on land WorldCover classes as built-up (0.7\,km$^2$ in the
+riverine AOIs and 2.7\,km$^2$ in the urban one, against 30.5\,km$^2$ on
+grassland in the urban analysis, mostly along river corridors), so these
+scores rest on small areas, but the failure is uniform. The best class is
+cropland for the U-Nets (F1 0.68 riverine, 0.54 urban) and herbaceous wetland
+for the classical methods in riverine settings (0.53 to 0.60). For the U-Net,
+riverine shrubland is the weakest vegetated class (F1 0.21).
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{fig_f1_landcover.png}
+\caption{F1 for the flood class by ESA WorldCover class and method. Labels
+under each class give the reference flood water it contains.}
+\label{fig:landcover}
+\end{figure}
+
+\subsection{HAND mask}
+
+Setting to dry every pixel more than 20\,m above the nearest drainage changes
+IoU by at most 0.008 for any method in either group. Along the lower Tana and
+in Nairobi's river valleys nearly all flood water, and nearly all false
+alarms, lie within 20\,m of drainage, so the mask has little to remove.
 
 \section{Exposure estimates against UNOSAT counts}
 \label{sec:exposure}
