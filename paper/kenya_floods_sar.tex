@@ -401,10 +401,11 @@ they label as water far more than UNOSAT mapped.
 In the urban and peri-urban analysis the ordering compresses. The three U-Nets
 score between 0.217 and 0.228 and the best classical method, Otsu on VH,
 0.192 (0.161 to 0.225); the intervals overlap, and no method can be said to be
-better than the others. Every method's precision there is moderate (0.62 to
-0.65 for the U-Nets) and its recall low (about 0.26): what SAR labels as water
-in Nairobi is usually water in the reference, but it finds about a quarter of
-the flood water UNOSAT mapped. The automatic thresholds also break down in the
+better than the others. The U-Nets' precision there is 0.62 to 0.65 and their
+recall about 0.26: what they label as water in Nairobi is usually water in the
+reference, but they find about a quarter of the flood water UNOSAT mapped.
+Methods that reach higher recall do so by labelling large parts of the city as
+water; Otsu on VV finds 82\,\% of the reference at a precision of 0.16. The automatic thresholds also break down in the
 city: Otsu's threshold on VV falls at $-7.6$\,dB, within the range of ordinary
 dry land, because the urban histogram separates bright buildings from
 everything else rather than water from land. The change-detection fits land
@@ -618,9 +619,9 @@ explicit treatment of built-up areas, for exposure; a single headline
 accuracy figure would hide this.
 
 The third is that radar alone does not resolve urban flooding in Nairobi.
-Every method, including the U-Net, finds about a quarter of the flood water
-UNOSAT mapped from Pléiades on the same day, and none is clearly better than
-the others. Urban flooding in Nairobi and its neighbours is short-lived and
+The methods that keep false alarms in check, the U-Net among them, find
+about a quarter of the flood water UNOSAT mapped from Pléiades on the same day,
+and none is clearly better than the others. Urban flooding in Nairobi and its neighbours is short-lived and
 concentrated along narrow river corridors and among buildings, where
 backscatter brightens instead of darkening. Interferometric coherence and
 urban elevation models \cite{mason2021} are the established ways forward,
