@@ -1,0 +1,206 @@
+{
+ "otsu_vv": {
+  "test": {
+   "all_water": {
+    "pooled_iou": 0.2203398070989679,
+    "mean_chip_iou": 0.2547343986233229,
+    "n_chips": 90
+   },
+   "flood_water": {
+    "pooled_iou": 0.1504764277935396,
+    "mean_chip_iou": 0.20294851444672174,
+    "n_chips": 90
+   }
+  },
+  "test_paired": {
+   "all_water": {
+    "pooled_iou": 0.21594888550007005,
+    "mean_chip_iou": 0.25252590721567725,
+    "n_chips": 86
+   },
+   "flood_water": {
+    "pooled_iou": 0.14391073445565097,
+    "mean_chip_iou": 0.19866918336327175,
+    "n_chips": 86
+   }
+  },
+  "bolivia": {
+   "all_water": {
+    "pooled_iou": 0.4032366601572808,
+    "mean_chip_iou": 0.4308644635576282,
+    "n_chips": 15
+   },
+   "flood_water": {
+    "pooled_iou": 0.385363328034158,
+    "mean_chip_iou": 0.3660906858900143,
+    "n_chips": 15
+   }
+  },
+  "bolivia_paired": {
+   "all_water": {
+    "pooled_iou": 0.3331754388021902,
+    "mean_chip_iou": 0.42508976981227875,
+    "n_chips": 9
+   },
+   "flood_water": {
+    "pooled_iou": 0.310176766375369,
+    "mean_chip_iou": 0.39054456095237383,
+    "n_chips": 9
+   }
+  }
+ },
+ "otsu_vh": {
+  "test": {
+   "all_water": {
+    "pooled_iou": 0.2999301399089931,
+    "mean_chip_iou": 0.28336482939896385,
+    "n_chips": 90
+   },
+   "flood_water": {
+    "pooled_iou": 0.19414576664203498,
+    "mean_chip_iou": 0.22418295285756631,
+    "n_chips": 90
+   }
+  },
+  "test_paired": {
+   "all_water": {
+    "pooled_iou": 0.2939047571745213,
+    "mean_chip_iou": 0.2792381022719398,
+    "n_chips": 86
+   },
+   "flood_water": {
+    "pooled_iou": 0.18450100505741218,
+    "mean_chip_iou": 0.21768148027731188,
+    "n_chips": 86
+   }
+  },
+  "bolivia": {
+   "all_water": {
+    "pooled_iou": 0.5188821222210959,
+    "mean_chip_iou": 0.45322722998743425,
+    "n_chips": 15
+   },
+   "flood_water": {
+    "pooled_iou": 0.502742361823501,
+    "mean_chip_iou": 0.38719403967516064,
+    "n_chips": 15
+   }
+  },
+  "bolivia_paired": {
+   "all_water": {
+    "pooled_iou": 0.4691600213269044,
+    "mean_chip_iou": 0.4579106982435052,
+    "n_chips": 9
+   },
+   "flood_water": {
+    "pooled_iou": 0.44821867585479647,
+    "mean_chip_iou": 0.4242265156794659,
+    "n_chips": 9
+   }
+  }
+ },
+ "change_otsu_vv": {
+  "test_paired": {
+   "all_water": {
+    "pooled_iou": 0.11264969660016967,
+    "mean_chip_iou": 0.11318271674440009,
+    "n_chips": 86
+   },
+   "flood_water": {
+    "pooled_iou": 0.09925584114305945,
+    "mean_chip_iou": 0.11136927445985516,
+    "n_chips": 86
+   }
+  },
+  "bolivia_paired": {
+   "all_water": {
+    "pooled_iou": 0.16049052050844317,
+    "mean_chip_iou": 0.20936504589880311,
+    "n_chips": 9
+   },
+   "flood_water": {
+    "pooled_iou": 0.15563197190523403,
+    "mean_chip_iou": 0.2004907331717099,
+    "n_chips": 9
+   }
+  }
+ },
+ "change_otsu_vh": {
+  "test_paired": {
+   "all_water": {
+    "pooled_iou": 0.12278596957248311,
+    "mean_chip_iou": 0.11344802062833317,
+    "n_chips": 86
+   },
+   "flood_water": {
+    "pooled_iou": 0.09736334203999517,
+    "mean_chip_iou": 0.10401730761566544,
+    "n_chips": 86
+   }
+  },
+  "bolivia_paired": {
+   "all_water": {
+    "pooled_iou": 0.19440559235937172,
+    "mean_chip_iou": 0.26130934696125885,
+    "n_chips": 9
+   },
+   "flood_water": {
+    "pooled_iou": 0.1937290522122669,
+    "mean_chip_iou": 0.25638862477769453,
+    "n_chips": 9
+   }
+  }
+ },
+ "change_fixed_vv": {
+  "test_paired": {
+   "all_water": {
+    "pooled_iou": 0.209717524755054,
+    "mean_chip_iou": 0.11613652292203085,
+    "n_chips": 86
+   },
+   "flood_water": {
+    "pooled_iou": 0.23539618940295082,
+    "mean_chip_iou": 0.11758435732343951,
+    "n_chips": 86
+   }
+  },
+  "bolivia_paired": {
+   "all_water": {
+    "pooled_iou": 0.38413364442604647,
+    "mean_chip_iou": 0.22436585106597512,
+    "n_chips": 9
+   },
+   "flood_water": {
+    "pooled_iou": 0.39849312800132475,
+    "mean_chip_iou": 0.22157070042876945,
+    "n_chips": 9
+   }
+  }
+ },
+ "change_fixed_vh": {
+  "test_paired": {
+   "all_water": {
+    "pooled_iou": 0.21788984719293206,
+    "mean_chip_iou": 0.12305821883347363,
+    "n_chips": 86
+   },
+   "flood_water": {
+    "pooled_iou": 0.2176763643502739,
+    "mean_chip_iou": 0.1162471267058481,
+    "n_chips": 86
+   }
+  },
+  "bolivia_paired": {
+   "all_water": {
+    "pooled_iou": 0.38437900473486125,
+    "mean_chip_iou": 0.2388626201259067,
+    "n_chips": 9
+   },
+   "flood_water": {
+    "pooled_iou": 0.39698231156403757,
+    "mean_chip_iou": 0.237353155794514,
+    "n_chips": 9
+   }
+  }
+ }
+}
