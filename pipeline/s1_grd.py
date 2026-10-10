@@ -8,6 +8,7 @@ the same here keeps Kenya scenes in the radiometric domain the U-Net was
 trained on.
 """
 
+import time
 from dataclasses import dataclass
 from functools import lru_cache
 import xml.etree.ElementTree as ET
@@ -135,6 +136,19 @@ def _noise(item: pystac.Item, pol: str, lines: np.ndarray, pixels: np.ndarray) -
     return rng * az
 
 
+def _read_window(href: str, window: Window, attempts: int = 4) -> np.ndarray:
+    """Windowed read of a remote COG, retried because long runs meet transient
+    network failures."""
+    for attempt in range(attempts):
+        try:
+            with rasterio.open(planetary_computer.sign(href)) as src:
+                return src.read(1, window=window).astype("float64")
+        except rasterio.errors.RasterioIOError:
+            if attempt == attempts - 1:
+                raise
+            time.sleep(10 * (attempt + 1))
+
+
 def sigma0_pass(items: list[pystac.Item], grid: Grid, ellipsoid_height: np.ndarray) -> dict[str, np.ndarray]:
     """sigma0 from consecutive slices of one pass, each filling the other's gaps."""
     out = {pol: np.full((grid.height, grid.width), np.nan, dtype="float32") for pol in POLS}
@@ -162,8 +176,7 @@ def sigma0(item: pystac.Item, grid: Grid, ellipsoid_height: np.ndarray) -> dict[
         raise ValueError(f"{item.id} does not cover the target grid")
     lines, pixels = np.arange(r0, r1), np.arange(c0, c1)
     for pol in POLS:
-        with rasterio.open(planetary_computer.sign(item.assets[pol].href)) as src:
-            dn = src.read(1, window=Window(c0, r0, c1 - c0, r1 - r0)).astype("float64")
+        dn = _read_window(item.assets[pol].href, Window(c0, r0, c1 - c0, r1 - r0))
         cal = _calibration(item, pol, lines, pixels)
         power = (dn**2 - _noise(item, pol, lines, pixels)) / cal**2
         power[dn == 0] = np.nan
