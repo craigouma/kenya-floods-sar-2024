@@ -7,6 +7,7 @@ rather than in colour, and magnitude uses a single-hue navy ramp.
 
 import geopandas as gpd
 import matplotlib as mpl
+import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -173,23 +174,33 @@ def landcover_heatmap() -> None:
 
 
 def exposure() -> None:
+    """Ratio of buildings in each mask to UNOSAT's count, one shared log axis.
+
+    The band spans the ratios obtained with UNOSAT's own flood extent: the
+    disagreement that comes from the building data alone."""
     df = pd.read_csv(OUTPUTS / "exposure.csv")
     names = {"garissa_s2": "Garissa, 29 Apr", "garissa_pl": "Garissa, 5 May", "nairobi_pl": "Nairobi area, 1 May"}
-    methods = ["unosat_extent"] + ordered_methods(df)
-    labels = {"unosat_extent": "UNOSAT flood extent", **LABELS}
-    fig, axes = plt.subplots(1, 3, figsize=(11, 3.6), sharey=True)
-    for ax, (aoi, title) in zip(axes, names.items()):
+    methods = ordered_methods(df)
+    band = df[df["method"] == "unosat_extent"]["ratio_to_unosat"]
+    fig, ax = plt.subplots(figsize=(8.6, 4.2))
+    ax.axvspan(band.min(), band.max(), color=BG_ALT, zorder=0)
+    ax.axvline(1, color=OMISSION, linewidth=1.2, linestyle="--", zorder=1)
+    y = np.arange(len(methods))[::-1]
+    markers = {"garissa_s2": ("o", NAVY), "garissa_pl": ("s", BLUE), "nairobi_pl": ("D", MUTED)}
+    for aoi, label in names.items():
         g = df[df["aoi"] == aoi].set_index("method").reindex(methods)
-        y = np.arange(len(methods))[::-1]
-        ax.barh(y, g["exposed"], color=[NAVY if m == "unosat_extent" else BLUE for m in methods], height=0.6)
-        ax.axvline(g["unosat_structures_in_domain"].iloc[0], color=OMISSION, linewidth=1.4, linestyle="--")
-        ax.set_xscale("log")
-        ax.set_title(title)
-        ax.set_yticks(y, [labels[m] for m in methods])
-        ax.set_xlabel("Open Buildings centroids in flood mask")
-        ax.grid(axis="x")
-    axes[-1].legend(handles=[plt.Line2D([], [], color=OMISSION, linestyle="--", label="UNOSAT structure count")],
-                    loc="lower right", fontsize=7.5)
+        m, c = markers[aoi]
+        ax.plot(g["ratio_to_unosat"], y, m, color=c, markersize=7, label=label, zorder=3)
+    ax.set_xscale("log")
+    ax.set_xlim(0.02, 20)
+    ax.set_xticks([0.03, 0.1, 0.3, 1, 3, 10], ["0.03", "0.1", "0.3", "1", "3", "10"])
+    ax.set_yticks(y, [LABELS[m] for m in methods])
+    ax.set_xlabel("Open Buildings in flood mask / UNOSAT structure count")
+    ax.grid(axis="x")
+    ax.set_ylim(-0.7, len(methods) - 0.1)
+    ax.annotate("spread from building data alone", (band.max(), len(methods) - 0.45), xytext=(4, 0),
+                textcoords="offset points", fontsize=7.5, color=MUTED, va="center")
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.14), ncol=3, fontsize=8)
     fig.tight_layout()
     fig.savefig(PAPER / "fig_exposure.png")
     plt.close(fig)
@@ -233,7 +244,9 @@ def tana_series() -> None:
         ax.set_title(f"Relative orbit {orbit}")
         ax.set_ylabel("Flood water (km²)")
         ax.grid(axis="y")
-        ax.tick_params(axis="x", rotation=30)
+        ax.xaxis.set_major_locator(mdates.MonthLocator())
+        ax.xaxis.set_minor_locator(mdates.DayLocator(bymonthday=15))
+        ax.xaxis.set_major_formatter(mdates.DateFormatter("1 %b"))
     fig.tight_layout()
     fig.savefig(PAPER / "fig_tana_series.png")
     plt.close(fig)
