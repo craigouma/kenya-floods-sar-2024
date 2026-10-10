@@ -19,6 +19,7 @@ from prepare import stack
 from reference import SPEC, UTM, domain, layer
 
 TILE = CACHE / "buildings" / "183_buildings.csv.gz"
+AOIS = {a: s for a, s in SPEC.items() if s.structures}
 MIN_CONFIDENCE = 0.70
 SUBSET = CACHE / "buildings" / "aoi_buildings.csv"
 
@@ -26,7 +27,7 @@ SUBSET = CACHE / "buildings" / "aoi_buildings.csv"
 def buildings() -> pd.DataFrame:
     if SUBSET.exists():
         return pd.read_csv(SUBSET)
-    bounds = pd.DataFrame([layer(s.extent).total_bounds for s in SPEC.values()], columns=["x0", "y0", "x1", "y1"])
+    bounds = pd.DataFrame([layer(s.extent).total_bounds for s in AOIS.values()], columns=["x0", "y0", "x1", "y1"])
     x0, y0, x1, y1 = bounds["x0"].min(), bounds["y0"].min(), bounds["x1"].max(), bounds["y1"].max()
     parts = []
     with gzip.open(TILE, "rt") as f:
@@ -47,7 +48,7 @@ def main() -> None:
     b = buildings()
     b = b[b["confidence"] >= MIN_CONFIDENCE]
     rows = []
-    for aoi, spec in SPEC.items():
+    for aoi, spec in AOIS.items():
         s = stack(aoi)
         with rasterio.open(OUTPUTS / "masks" / f"{aoi}_{methods_for(aoi)[0]}.tif") as src:
             transform, shape = src.transform, src.shape
