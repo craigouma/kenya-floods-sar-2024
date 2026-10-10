@@ -99,14 +99,20 @@ def run_tile(aoi: str, method: str, factor: int) -> list[dict]:
             pres[p.orbit] = max(cands, key=lambda q: (round(q.cover, 2), q.date)) if cands else None
         if pres[p.orbit] is None:
             continue
-        pre = pre_event(aoi, p.orbit, pres[p.orbit].id, grid, anc["ellipsoid_height"])
-        post = s1_grd.sigma0_pass(p.items, grid, anc["ellipsoid_height"])
-        valid = keep & np.isfinite(post["vv"]) & np.isfinite(pre["vv"])
-        mask = flood_mask(method, post, pre, valid) & valid
-        with rasterio.open(OUT / f"{p.date:%Y%m%d}_o{p.orbit}_{aoi}.tif", "w", driver="GTiff", height=grid.height,
-                           width=grid.width, count=1, dtype="uint8", crs=UTM, transform=grid.transform, nodata=255,
-                           compress="deflate", tiled=True) as dst:
-            dst.write(np.where(valid, mask, 255).astype("uint8"), 1)
+        out = OUT / f"{p.date:%Y%m%d}_o{p.orbit}_{aoi}.tif"
+        if out.exists():
+            with rasterio.open(out) as src:
+                written = src.read(1)
+            valid, mask = written != 255, written == 1
+        else:
+            pre = pre_event(aoi, p.orbit, pres[p.orbit].id, grid, anc["ellipsoid_height"])
+            post = s1_grd.sigma0_pass(p.items, grid, anc["ellipsoid_height"])
+            valid = keep & np.isfinite(post["vv"]) & np.isfinite(pre["vv"])
+            mask = flood_mask(method, post, pre, valid) & valid
+            with rasterio.open(out, "w", driver="GTiff", height=grid.height, width=grid.width, count=1,
+                               dtype="uint8", crs=UTM, transform=grid.transform, nodata=255,
+                               compress="deflate", tiled=True) as dst:
+                dst.write(np.where(valid, mask, 255).astype("uint8"), 1)
         for code, name in COUNTY_NAMES.items():
             inside = county == code
             rows.append({"date": p.date.date().isoformat(), "orbit": p.orbit, "aoi": aoi, "county": name,
