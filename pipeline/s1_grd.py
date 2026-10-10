@@ -40,7 +40,7 @@ class Grid:
 
 @lru_cache(maxsize=64)
 def _xml(href: str) -> ET.Element:
-    r = requests.get(planetary_computer.sign(href), timeout=120)
+    r = requests.get(_fresh(href), timeout=120)
     r.raise_for_status()
     return ET.fromstring(r.content)
 
@@ -136,12 +136,18 @@ def _noise(item: pystac.Item, pol: str, lines: np.ndarray, pixels: np.ndarray) -
     return rng * az
 
 
+def _fresh(href: str) -> str:
+    """Re-sign with a current SAS token: items signed at search time carry a
+    token that expires during long runs, after which reads fail with 403."""
+    return planetary_computer.sign(href.split("?")[0])
+
+
 def _read_window(href: str, window: Window, attempts: int = 4) -> np.ndarray:
     """Windowed read of a remote COG, retried because long runs meet transient
     network failures."""
     for attempt in range(attempts):
         try:
-            with rasterio.open(planetary_computer.sign(href)) as src:
+            with rasterio.open(_fresh(href)) as src:
                 return src.read(1, window=window).astype("float64")
         except rasterio.errors.RasterioIOError:
             if attempt == attempts - 1:
@@ -166,7 +172,7 @@ def sigma0(item: pystac.Item, grid: Grid, ellipsoid_height: np.ndarray) -> dict[
     """Return sigma0 in dB for VV and VH on `grid`; NaN outside the swath."""
     line, pixel = radar_coordinates(item, grid, ellipsoid_height)
     out = {}
-    with rasterio.open(planetary_computer.sign(item.assets["vv"].href)) as src:
+    with rasterio.open(_fresh(item.assets["vv"].href)) as src:
         n_lines, n_pixels = src.height, src.width
     r0 = int(max(np.floor(np.nanmin(line)) - 2, 0))
     r1 = int(min(np.ceil(np.nanmax(line)) + 3, n_lines))
