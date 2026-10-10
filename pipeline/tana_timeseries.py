@@ -5,8 +5,8 @@ corridor tiles in Garissa and Tana River counties, plus the Garissa extent.
 There is no reference for most of this area; the riverine accuracy from the
 evaluation is its expected error. Each relative orbit images a different part
 of the corridor, so areas are reported per orbit with the observed area
-alongside, and are only comparable within an orbit. Mapping is at 20 m by
-default to keep the April to June run to a few hours; the evaluation is at 10 m.
+alongside, and are only comparable within an orbit. Classical methods can be
+mapped at 20 m to save time; the U-Nets run at the 10 m they were trained on.
 """
 
 import argparse
@@ -82,6 +82,7 @@ def pre_event(aoi: str, orbit: int, pass_id: str, grid, height) -> dict:
 def run_tile(aoi: str, method: str, factor: int) -> list[dict]:
     """All passes over one tile. At factor 2 the tile is mapped at 20 m, with
     ancillary layers subsampled from the 10 m stack."""
+    torch.set_num_threads(2)
     cat = catalog()
     full = grid_of(aoi)
     anc = {k: v[: full.height // factor * factor : factor, : full.width // factor * factor : factor]
@@ -115,6 +116,8 @@ def run_tile(aoi: str, method: str, factor: int) -> list[dict]:
 
 
 def build(method: str, factor: int = 2, workers: int = 4) -> pd.DataFrame:
+    if method.startswith("unet") and factor != 1:
+        raise ValueError("the U-Nets were trained on 10 m chips; run them with factor 1")
     OUT.mkdir(parents=True, exist_ok=True)
     with ProcessPoolExecutor(workers) as pool:
         parts = pool.map(run_tile, region_aois(), repeat(method), repeat(factor))
