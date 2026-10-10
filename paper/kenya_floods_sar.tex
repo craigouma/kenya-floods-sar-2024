@@ -526,7 +526,61 @@ alarms, lie within 20\,m of drainage, so the mask has little to remove.
 \section{Exposure estimates against UNOSAT counts}
 \label{sec:exposure}
 
-RESULTS-PENDING
+UNOSAT counted 3,440 potentially affected buildings at Garissa and Mororo on
+29 April, 3,377 on 5 May, and 13,111 affected structures across the urban
+analysis on 1 May, of which 12,985 fall inside the evaluation domain here
+\cite{unosat2024}. Those counts were digitised by analysts on very high
+resolution imagery. Table~\ref{tab:exposure} sets against them the number of
+Google Open Buildings v3 centroids \cite{sirko2021} inside each method's flood
+mask, and inside UNOSAT's own flood extent. The last row separates the two
+sources of disagreement: even with UNOSAT's flood extent, Open Buildings gives
+0.72, 1.26 and 0.67 times UNOSAT's counts, so differences of about 30\,\% in
+either direction come from the building data alone, and agreement closer than
+that should not be expected.
+
+\begin{table}[h]
+\centering
+\small
+\caption{Buildings in flood masks: Open Buildings v3 centroids (confidence at
+least 0.70) inside each mask and the evaluation domain, with the ratio to
+UNOSAT's structure count in brackets. UNOSAT counts in the domain: 3,440 (Garissa, 29 April), 3,377 (Garissa, 5 May) and 12,985 (urban).}
+\label{tab:exposure}
+\begin{tabular}{lrrr}
+\toprule
+Mask & Garissa, 29 Apr & Garissa, 5 May & Nairobi area, 1 May \\
+\midrule
+Open Buildings in UNOSAT flood extent & 2,481 (0.72) & 4,241 (1.26) & 8,736 (0.67) \\
+U-Net, post & 116 (0.03) & 488 (0.14) & 757 (0.06) \\
+U-Net, pre and post & 145 (0.04) & 852 (0.25) & 886 (0.07) \\
+Change, $-3$\,dB, VV & 1,379 (0.40) & 2,557 (0.76) & 7,246 (0.56) \\
+Change, $-3$\,dB, VH & 1,919 (0.56) & 3,417 (1.01) & 10,166 (0.78) \\
+Otsu, VH & 797 (0.23) & 327 (0.10) & 1,484 (0.11) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The method that maps flood extent best is the worst at finding flooded
+buildings. The U-Net trained on hand-labelled and weak labels puts 116, 488
+and 757 buildings in its masks, between 0.03 and 0.14 times UNOSAT's counts.
+Its masks follow open floodplain and almost never enter settlements, which is
+consistent with its F1 of 0.05 to 0.06 on built-up land and with a training set
+that contains no urban floods. Change detection with a fixed $-3$\,dB threshold
+on VH comes closest to UNOSAT's counts, at 0.56, 1.01 and 0.78 times. It does
+so with low pixel-level agreement in Nairobi (IoU 0.165), so the closeness of
+its count is partly a matter of commission and omission cancelling; it
+nevertheless shows that backscatter decreases in and around Kenyan
+settlements carry information about flooded buildings that the U-Net
+discards. In the urban analysis, Otsu on VV and Otsu-fitted change detection,
+whose thresholds fail there (Section~\ref{sec:kenya}), overcount by factors
+of 4.7 to 9.6, while Otsu on VH undercounts at 0.11 (Figure~\ref{fig:exposure}).
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{fig_exposure.png}
+\caption{Open Buildings centroids inside each method's flood mask, on a
+logarithmic scale, against UNOSAT's structure count (dashed).}
+\label{fig:exposure}
+\end{figure}
 
 \section{Lower Tana flood time series}
 \label{sec:tana}
