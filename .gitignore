@@ -16,3 +16,6 @@ paper/*.synctex.gz
 
 # macOS
 .DS_Store
+
+# Copies of pipeline/unet.py and pipeline/train_unet.py made for each Kaggle upload
+kaggle/code/*.py
