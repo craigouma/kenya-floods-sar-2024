@@ -121,7 +121,8 @@ def run_tile(aoi: str, method: str, factor: int) -> list[dict]:
     return rows
 
 
-def build(method: str, factor: int = 2, workers: int = 4) -> pd.DataFrame:
+def build(method: str, factor: int | None = None, workers: int = 2) -> pd.DataFrame:
+    factor = factor or (1 if method.startswith("unet") else 2)
     if method.startswith("unet") and factor != 1:
         raise ValueError("the U-Nets were trained on 10 m chips; run them with factor 1")
     OUT.mkdir(parents=True, exist_ok=True)
@@ -139,7 +140,7 @@ def build(method: str, factor: int = 2, workers: int = 4) -> pd.DataFrame:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--method", required=True)
-    ap.add_argument("--factor", type=int, default=2)
+    ap.add_argument("--factor", type=int)
     args = ap.parse_args()
     print(build(args.method, args.factor).round(1).to_string(index=False))
 
