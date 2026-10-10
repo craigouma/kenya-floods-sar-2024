@@ -404,7 +404,11 @@ score between 0.217 and 0.228 and the best classical method, Otsu on VH,
 better than the others. Every method's precision there is moderate (0.62 to
 0.65 for the U-Nets) and its recall low (about 0.26): what SAR labels as water
 in Nairobi is usually water in the reference, but it finds about a quarter of
-the flood water UNOSAT mapped.
+the flood water UNOSAT mapped. The automatic thresholds also break down in the
+city: Otsu's threshold on VV falls at $-7.6$\,dB, within the range of ordinary
+dry land, because the urban histogram separates bright buildings from
+everything else rather than water from land, and the change-detection fits
+land at or above 0\,dB, where the cap applies.
 
 \begin{table}[h]
 \centering
