@@ -259,6 +259,7 @@ def main() -> None:
     landcover_heatmap()
     exposure()
     day_gap()
+    error_panels("garissa_pl", "unet_post", "fig_panels_garissa.png")
     if (OUTPUTS / "tana_timeseries.csv").exists():
         tana_series()
 
