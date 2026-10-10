@@ -33,7 +33,8 @@ def passes(cat, geom, ref_date: pd.Timestamp) -> list[tuple[str, str, int]]:
 def main() -> None:
     cat = catalog()
     rows = []
-    for a in load_aois().to_crs("EPSG:4326").itertuples():
+    aois = load_aois()
+    for a in aois[~aois["aoi"].str.startswith("tana_")].to_crs("EPSG:4326").itertuples():
         ref_date = pd.Timestamp(a.reference_date)
         for post_id, pre_id, orbit in passes(cat, a.geometry, ref_date):
             s = stack(a.aoi, post_id, pre_id)
