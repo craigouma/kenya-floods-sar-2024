@@ -21,6 +21,7 @@ from unet import UNet, predict
 MASKS = OUTPUTS / "masks"
 MASKS.mkdir(parents=True, exist_ok=True)
 
+CLASSICAL = [f"{m}_{pol}" for m in ("otsu", "change_otsu", "change_fixed") for pol in ("vv", "vh")]
 UNETS = {"unet_post": ("post_hand_weak", 2), "unet_post_hand": ("post_hand", 2), "unet_pre": ("pre_hand", 4)}
 
 
@@ -57,7 +58,15 @@ def write(aoi: str, name: str, mask: np.ndarray, valid: np.ndarray) -> Path:
     return path
 
 
-def run(aoi: str) -> list[dict]:
+def run(aoi: str, force: bool = False) -> list[dict]:
+    """Write every method's mask for one AOI; reuse existing masks unless forced
+    (U-Net inference over all AOIs takes about an hour on a CPU)."""
+    expected = [f"{aoi}_{m}.tif" for m in CLASSICAL] + [f"{aoi}_{m}.tif" for m, (w, _) in UNETS.items()
+                                                        if (MODELS / f"{w}.pt").exists()]
+    thresholds_file = OUTPUTS / "thresholds.csv"
+    if not force and thresholds_file.exists() and all((MASKS / e).exists() for e in expected):
+        old = pd.read_csv(thresholds_file)
+        return old[old["aoi"] == aoi].to_dict("records")
     s = stack(aoi)
     valid = np.isfinite(s["post_vv"]) & np.isfinite(s["pre_vv"])
     masks, thresholds = classical_masks(s)
@@ -67,9 +76,9 @@ def run(aoi: str) -> list[dict]:
     return [{"aoi": aoi, "method": k, "threshold_db": thresholds.get(k)} for k in masks]
 
 
-def main(aois: list[str] | None = None) -> None:
+def main(aois: list[str] | None = None, force: bool = False) -> None:
     aois = aois or list(pd.read_csv(SCENES)["aoi"])
-    rows = [r for aoi in aois for r in run(aoi)]
+    rows = [r for aoi in aois for r in run(aoi, force)]
     df = pd.DataFrame(rows)
     path = OUTPUTS / "thresholds.csv"
     if path.exists():
